@@ -9,9 +9,24 @@ const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'vim-quest-secret-key-change-in-production';
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
-// CORS configuration
+// CORS configuration - allow both local and production origins
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://vim-quest.onrender.com',
+  CLIENT_URL
+].filter((origin, index, self) => self.indexOf(origin) === index); // Remove duplicates
+
 app.use(cors({
-  origin: CLIENT_URL,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
