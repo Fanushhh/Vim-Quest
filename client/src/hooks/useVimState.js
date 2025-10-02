@@ -1,4 +1,4 @@
-import { useReducer } from 'react';
+import { useReducer, useEffect } from 'react';
 
 const initialState = {
   cursorPos: { row: 0, col: 0 },
@@ -157,6 +157,12 @@ function vimReducer(state, action) {
         }
       };
 
+    case 'RESET':
+      return {
+        ...initialState,
+        textLines: [...action.payload]
+      };
+
     default:
       return state;
   }
@@ -167,6 +173,11 @@ export function useVimState(initialText) {
     ...initialState,
     textLines: [...initialText]
   });
+
+  // Reset state when initialText changes (new lesson)
+  useEffect(() => {
+    dispatch({ type: 'RESET', payload: initialText });
+  }, [initialText]);
 
   return [state, dispatch];
 }

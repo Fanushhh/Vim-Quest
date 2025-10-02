@@ -9,7 +9,7 @@ import './VimSimulator.css';
 
 function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLessons }) {
   const [state, dispatch] = useVimState(lesson.initialText);
-  const [startTime] = useState(Date.now());
+  const [startTime, setStartTime] = useState(Date.now());
   const [completionTriggered, setCompletionTriggered] = useState(false);
   const [completionData, setCompletionData] = useState(null);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
@@ -19,6 +19,20 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
   const [waitingForReplaceChar, setWaitingForReplaceChar] = useState(false);
   const [waitingForMarkName, setWaitingForMarkName] = useState(false);
   const [waitingForJumpMark, setWaitingForJumpMark] = useState(false);
+
+  // Reset all state when lesson changes
+  useEffect(() => {
+    setStartTime(Date.now());
+    setCompletionTriggered(false);
+    setCompletionData(null);
+    setHasUserInteracted(false);
+    setErrors([]);
+    setSearchDirection('forward');
+    setUndoPerformed(false);
+    setWaitingForReplaceChar(false);
+    setWaitingForMarkName(false);
+    setWaitingForJumpMark(false);
+  }, [lesson.id]); // Reset when lesson ID changes
 
   const showMessage = (msg, duration = 0) => {
     dispatch({ type: 'SET_MESSAGE', payload: msg });
