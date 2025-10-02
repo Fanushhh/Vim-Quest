@@ -37,25 +37,108 @@ function Dashboard({ username, token, onLogout }) {
   useEffect(() => {
     fetchProgress();
     fetchAchievements();
-    loadPurchasedItems();
-    loadCustomizations();
-    loadBoosters();
+    fetchPurchasedItems();
+    fetchCustomizations();
+    fetchBoosters();
   }, []);
 
-  const loadBoosters = () => {
-    const saved = localStorage.getItem(`boosters_${username}`);
-    if (saved) {
-      const boosters = JSON.parse(saved);
+  const fetchPurchasedItems = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/purchases`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      setPurchasedItems(data);
+    } catch (error) {
+      console.error('Failed to fetch purchases:', error);
+    }
+  };
+
+  const fetchCustomizations = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/customizations`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      setActiveCustomizations({
+        theme: data.theme || null,
+        editor_style: data.editor_style || null,
+        badge_effect: data.badge_effect || null,
+        completion_effect: data.completion_effect || null,
+        sound_pack: data.sound_pack || null,
+        title: data.title || null
+      });
+    } catch (error) {
+      console.error('Failed to fetch customizations:', error);
+    }
+  };
+
+  const fetchBoosters = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/boosters`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+
+      const boosters = {
+        doubleXP: data.doubleXP || null,
+        extraHints: data.extraHints || 0,
+        streakFreeze: data.streakFreeze || 0
+      };
+
       // Check if double XP expired
       if (boosters.doubleXP && boosters.doubleXP.expiresAt < Date.now()) {
         boosters.doubleXP = null;
       }
+
       setActiveBoosters(boosters);
+    } catch (error) {
+      console.error('Failed to fetch boosters:', error);
     }
   };
 
-  const saveBoosters = (boosters) => {
-    localStorage.setItem(`boosters_${username}`, JSON.stringify(boosters));
+  const saveBoosters = async (boosters) => {
+    try {
+      // Save each booster type separately
+      if (boosters.doubleXP !== undefined) {
+        await fetch(`${API_URL}/api/boosters`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ boosterType: 'doubleXP', value: boosters.doubleXP })
+        });
+      }
+      if (boosters.extraHints !== undefined) {
+        await fetch(`${API_URL}/api/boosters`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ boosterType: 'extraHints', value: boosters.extraHints })
+        });
+      }
+      if (boosters.streakFreeze !== undefined) {
+        await fetch(`${API_URL}/api/boosters`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ boosterType: 'streakFreeze', value: boosters.streakFreeze })
+        });
+      }
+    } catch (error) {
+      console.error('Failed to save boosters:', error);
+    }
   };
 
   // Apply theme when activeCustomizations.theme changes
@@ -63,27 +146,25 @@ function Dashboard({ username, token, onLogout }) {
     applyTheme(activeCustomizations.theme);
   }, [activeCustomizations.theme]);
 
-  const loadPurchasedItems = () => {
-    const saved = localStorage.getItem(`purchased_items_${username}`);
-    if (saved) {
-      setPurchasedItems(JSON.parse(saved));
-    }
-  };
-
-  const loadCustomizations = () => {
-    const saved = localStorage.getItem(`customizations_${username}`);
-    if (saved) {
-      setActiveCustomizations(JSON.parse(saved));
-    }
-  };
-
-  const handleCustomizationChange = (type, itemId) => {
+  const handleCustomizationChange = async (type, itemId) => {
     const newCustomizations = {
       ...activeCustomizations,
       [type]: itemId
     };
     setActiveCustomizations(newCustomizations);
-    localStorage.setItem(`customizations_${username}`, JSON.stringify(newCustomizations));
+
+    try {
+      await fetch(`${API_URL}/api/customizations`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ customizationType: type, itemId })
+      });
+    } catch (error) {
+      console.error('Failed to save customization:', error);
+    }
   };
 
   const applyTheme = (themeId) => {
@@ -119,7 +200,7 @@ function Dashboard({ username, token, onLogout }) {
     }
   };
 
-  const handlePurchase = (itemId) => {
+  const handlePurchase = async (itemId) => {
     const item = shopItems.find(i => i.id === itemId);
 
     // Handle boosters/consumables
@@ -128,22 +209,34 @@ function Dashboard({ username, token, onLogout }) {
         const expiresAt = Date.now() + (item.duration * 60 * 60 * 1000); // Convert hours to ms
         const newBoosters = { ...activeBoosters, doubleXP: { expiresAt } };
         setActiveBoosters(newBoosters);
-        saveBoosters(newBoosters);
+        await saveBoosters(newBoosters);
       } else if (itemId === 'special_hint_pack') {
         const newBoosters = { ...activeBoosters, extraHints: activeBoosters.extraHints + item.quantity };
         setActiveBoosters(newBoosters);
-        saveBoosters(newBoosters);
+        await saveBoosters(newBoosters);
       } else if (itemId === 'special_streak_freeze') {
         const newBoosters = { ...activeBoosters, streakFreeze: activeBoosters.streakFreeze + item.quantity };
         setActiveBoosters(newBoosters);
-        saveBoosters(newBoosters);
+        await saveBoosters(newBoosters);
       }
       // Don't add consumables to purchased items (they're one-time use)
     } else {
       // Regular items (themes, titles, etc.)
       const newPurchasedItems = [...purchasedItems, itemId];
       setPurchasedItems(newPurchasedItems);
-      localStorage.setItem(`purchased_items_${username}`, JSON.stringify(newPurchasedItems));
+
+      try {
+        await fetch(`${API_URL}/api/purchases`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ itemId })
+        });
+      } catch (error) {
+        console.error('Failed to save purchase:', error);
+      }
     }
   };
 

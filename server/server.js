@@ -156,6 +156,107 @@ app.post('/api/achievements', authenticateToken, (req, res) => {
   }
 });
 
+// Get user purchases
+app.get('/api/purchases', authenticateToken, (req, res) => {
+  try {
+    const stmt = db.prepare('SELECT item_id FROM user_purchases WHERE user_id = ?');
+    const purchases = stmt.all(req.user.id);
+    res.json(purchases.map(p => p.item_id));
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Save purchase
+app.post('/api/purchases', authenticateToken, (req, res) => {
+  try {
+    const { itemId } = req.body;
+
+    const stmt = db.prepare(`
+      INSERT OR IGNORE INTO user_purchases (user_id, item_id)
+      VALUES (?, ?)
+    `);
+
+    stmt.run(req.user.id, itemId);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get user customizations
+app.get('/api/customizations', authenticateToken, (req, res) => {
+  try {
+    const stmt = db.prepare('SELECT customization_type, item_id FROM user_customizations WHERE user_id = ?');
+    const customizations = stmt.all(req.user.id);
+
+    const result = {};
+    customizations.forEach(c => {
+      result[c.customization_type] = c.item_id;
+    });
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Save customizations
+app.post('/api/customizations', authenticateToken, (req, res) => {
+  try {
+    const { customizationType, itemId } = req.body;
+
+    const stmt = db.prepare(`
+      INSERT INTO user_customizations (user_id, customization_type, item_id, updated_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id, customization_type)
+      DO UPDATE SET item_id = ?, updated_at = CURRENT_TIMESTAMP
+    `);
+
+    stmt.run(req.user.id, customizationType, itemId, itemId);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get user boosters
+app.get('/api/boosters', authenticateToken, (req, res) => {
+  try {
+    const stmt = db.prepare('SELECT booster_type, value FROM user_boosters WHERE user_id = ?');
+    const boosters = stmt.all(req.user.id);
+
+    const result = {};
+    boosters.forEach(b => {
+      result[b.booster_type] = JSON.parse(b.value);
+    });
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Save boosters
+app.post('/api/boosters', authenticateToken, (req, res) => {
+  try {
+    const { boosterType, value } = req.body;
+
+    const stmt = db.prepare(`
+      INSERT INTO user_boosters (user_id, booster_type, value, updated_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id, booster_type)
+      DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP
+    `);
+
+    const jsonValue = JSON.stringify(value);
+    stmt.run(req.user.id, boosterType, jsonValue, jsonValue);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
