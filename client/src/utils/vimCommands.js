@@ -29,11 +29,22 @@ export function moveCursor(cursorPos, textLines, command) {
           newColW++;
         }
       } else {
-        // Currently on a non-whitespace character (in a word)
-        // Move to end of current word
-        while (newColW < lineW.length && /\S/.test(lineW[newColW])) {
-          newColW++;
+        // Determine current character type
+        const currentChar = lineW[newColW];
+        const isAlphaNum = /[a-zA-Z0-9_]/.test(currentChar);
+
+        if (isAlphaNum) {
+          // Move to end of alphanumeric word
+          while (newColW < lineW.length && /[a-zA-Z0-9_]/.test(lineW[newColW])) {
+            newColW++;
+          }
+        } else {
+          // Move past punctuation
+          while (newColW < lineW.length && /[^\sa-zA-Z0-9_]/.test(lineW[newColW])) {
+            newColW++;
+          }
         }
+
         // Skip whitespace to reach beginning of next word
         while (newColW < lineW.length && /\s/.test(lineW[newColW])) {
           newColW++;
@@ -50,24 +61,73 @@ export function moveCursor(cursorPos, textLines, command) {
 
     case 'b': // word backward
       const lineB = textLines[cursorPos.row] || '';
-      const beforeCursorB = lineB.slice(0, cursorPos.col);
-      const matchB = beforeCursorB.match(/\S+\s*$/);
-      if (matchB) {
-        newPos.col = matchB.index;
-      } else {
-        newPos.col = 0;
+      let newColB = cursorPos.col;
+
+      if (newColB === 0) break;
+
+      // Move back one position
+      newColB--;
+
+      // Skip whitespace
+      while (newColB > 0 && /\s/.test(lineB[newColB])) {
+        newColB--;
       }
+
+      if (newColB >= 0) {
+        const charAtPos = lineB[newColB];
+        const isAlphaNum = /[a-zA-Z0-9_]/.test(charAtPos);
+
+        if (isAlphaNum) {
+          // Move to beginning of alphanumeric word
+          while (newColB > 0 && /[a-zA-Z0-9_]/.test(lineB[newColB - 1])) {
+            newColB--;
+          }
+        } else {
+          // Move to beginning of punctuation group
+          while (newColB > 0 && /[^\sa-zA-Z0-9_]/.test(lineB[newColB - 1])) {
+            newColB--;
+          }
+        }
+      }
+
+      newPos.col = Math.max(0, newColB);
       break;
 
     case 'e': // end of word
       const lineE = textLines[cursorPos.row] || '';
-      const afterCursorE = lineE.slice(cursorPos.col + 1);
-      const matchE = afterCursorE.match(/\S+/);
-      if (matchE) {
-        newPos.col = cursorPos.col + 1 + matchE.index + matchE[0].length - 1;
-      } else {
+      let newColE = cursorPos.col;
+
+      // Move forward one position
+      newColE++;
+
+      if (newColE >= lineE.length) {
         newPos.col = Math.max(0, lineE.length - 1);
+        break;
       }
+
+      // Skip whitespace
+      while (newColE < lineE.length && /\s/.test(lineE[newColE])) {
+        newColE++;
+      }
+
+      if (newColE < lineE.length) {
+        const charAtPos = lineE[newColE];
+        const isAlphaNum = /[a-zA-Z0-9_]/.test(charAtPos);
+
+        if (isAlphaNum) {
+          // Move to end of alphanumeric word
+          while (newColE < lineE.length - 1 && /[a-zA-Z0-9_]/.test(lineE[newColE + 1])) {
+            newColE++;
+          }
+        } else {
+          // Move to end of punctuation group
+          while (newColE < lineE.length - 1 && /[^\sa-zA-Z0-9_]/.test(lineE[newColE + 1])) {
+            newColE++;
+          }
+        }
+      }
+
+      newPos.col = Math.min(lineE.length - 1, newColE);
       break;
 
     case '0': // start of line
@@ -164,15 +224,49 @@ export function deleteText(textLines, cursorPos, command, visualStart = null, mo
     newCursorPos.col = 0;
     message = 'Deleted line';
   } else if (command === 'dw') {
-    // Delete word
+    // Delete word (respecting word boundaries like Vim)
     const line = newLines[cursorPos.row];
     if (line) {
-      const restOfLine = line.slice(cursorPos.col);
-      const match = restOfLine.match(/^\S+\s*/);
-      if (match) {
+      let deleteCount = 0;
+      let pos = cursorPos.col;
+      const currentChar = line[pos];
+
+      if (!currentChar) return { newLines, newCursorPos, message };
+
+      // If on whitespace, delete to next word
+      if (/\s/.test(currentChar)) {
+        while (pos < line.length && /\s/.test(line[pos])) {
+          pos++;
+          deleteCount++;
+        }
+      } else {
+        const isAlphaNum = /[a-zA-Z0-9_]/.test(currentChar);
+
+        if (isAlphaNum) {
+          // Delete alphanumeric word
+          while (pos < line.length && /[a-zA-Z0-9_]/.test(line[pos])) {
+            pos++;
+            deleteCount++;
+          }
+        } else {
+          // Delete punctuation
+          while (pos < line.length && /[^\sa-zA-Z0-9_]/.test(line[pos])) {
+            pos++;
+            deleteCount++;
+          }
+        }
+
+        // Also delete trailing whitespace
+        while (pos < line.length && /\s/.test(line[pos])) {
+          pos++;
+          deleteCount++;
+        }
+      }
+
+      if (deleteCount > 0) {
         newLines[cursorPos.row] =
           line.slice(0, cursorPos.col) +
-          line.slice(cursorPos.col + match[0].length);
+          line.slice(cursorPos.col + deleteCount);
         message = 'Deleted word';
       }
     }
@@ -207,12 +301,41 @@ export function yankText(textLines, cursorPos, command, visualStart = null, mode
     yankedContent = textLines[cursorPos.row];
     registerType = 'line';
   } else if (command === 'yw') {
-    // Yank word
+    // Yank word (respecting word boundaries like Vim)
     const line = textLines[cursorPos.row];
-    const restOfLine = line.slice(cursorPos.col);
-    const match = restOfLine.match(/^\S+\s*/);
-    if (match) {
-      yankedContent = match[0];
+    let pos = cursorPos.col;
+    const currentChar = line[pos];
+
+    if (currentChar) {
+      let startPos = pos;
+
+      // If on whitespace, yank to next word
+      if (/\s/.test(currentChar)) {
+        while (pos < line.length && /\s/.test(line[pos])) {
+          pos++;
+        }
+      } else {
+        const isAlphaNum = /[a-zA-Z0-9_]/.test(currentChar);
+
+        if (isAlphaNum) {
+          // Yank alphanumeric word
+          while (pos < line.length && /[a-zA-Z0-9_]/.test(line[pos])) {
+            pos++;
+          }
+        } else {
+          // Yank punctuation
+          while (pos < line.length && /[^\sa-zA-Z0-9_]/.test(line[pos])) {
+            pos++;
+          }
+        }
+
+        // Also yank trailing whitespace
+        while (pos < line.length && /\s/.test(line[pos])) {
+          pos++;
+        }
+      }
+
+      yankedContent = line.slice(startPos, pos);
       registerType = 'char';
     }
   } else if (command === 'y' && mode === 'visual' && visualStart) {
@@ -249,17 +372,51 @@ export function replaceText(textLines, cursorPos, command, newChar = '') {
       message = `Replaced with '${newChar}'`;
     }
   } else if (command === 'cw') {
-    // Change word (delete word and enter insert mode)
+    // Change word (delete word and enter insert mode, respecting word boundaries)
     const line = newLines[cursorPos.row];
     if (line) {
-      const restOfLine = line.slice(cursorPos.col);
-      const match = restOfLine.match(/^\S+\s*/);
-      if (match) {
-        newLines[cursorPos.row] =
-          line.slice(0, cursorPos.col) +
-          line.slice(cursorPos.col + match[0].length);
-        message = 'Changed word';
-        enterInsertMode = true;
+      let deleteCount = 0;
+      let pos = cursorPos.col;
+      const currentChar = line[pos];
+
+      if (currentChar) {
+        // If on whitespace, delete to next word
+        if (/\s/.test(currentChar)) {
+          while (pos < line.length && /\s/.test(line[pos])) {
+            pos++;
+            deleteCount++;
+          }
+        } else {
+          const isAlphaNum = /[a-zA-Z0-9_]/.test(currentChar);
+
+          if (isAlphaNum) {
+            // Delete alphanumeric word
+            while (pos < line.length && /[a-zA-Z0-9_]/.test(line[pos])) {
+              pos++;
+              deleteCount++;
+            }
+          } else {
+            // Delete punctuation
+            while (pos < line.length && /[^\sa-zA-Z0-9_]/.test(line[pos])) {
+              pos++;
+              deleteCount++;
+            }
+          }
+
+          // Also delete trailing whitespace
+          while (pos < line.length && /\s/.test(line[pos])) {
+            pos++;
+            deleteCount++;
+          }
+        }
+
+        if (deleteCount > 0) {
+          newLines[cursorPos.row] =
+            line.slice(0, cursorPos.col) +
+            line.slice(cursorPos.col + deleteCount);
+          message = 'Changed word';
+          enterInsertMode = true;
+        }
       }
     }
   }

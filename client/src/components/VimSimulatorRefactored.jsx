@@ -465,6 +465,21 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
           return;
         }
 
+        if (e.key === 'Backspace') {
+          e.preventDefault();
+          if (state.cursorPos.col > 0) {
+            const newLines = [...state.textLines];
+            const line = newLines[state.cursorPos.row];
+            newLines[state.cursorPos.row] = line.slice(0, state.cursorPos.col - 1) + line.slice(state.cursorPos.col);
+            dispatch({ type: 'SET_TEXT_LINES', payload: newLines });
+            dispatch({
+              type: 'SET_CURSOR',
+              payload: { ...state.cursorPos, col: state.cursorPos.col - 1 }
+            });
+          }
+          return;
+        }
+
         if (e.key.length === 1) {
           e.preventDefault();
           const newLines = insertText(state.textLines, state.cursorPos, e.key);

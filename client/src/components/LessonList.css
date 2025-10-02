@@ -56,6 +56,10 @@
   border-bottom-color: #da3633;
 }
 
+.category-header.developer.expanded {
+  border-bottom-color: #58a6ff;
+}
+
 .category-info {
   display: flex;
   align-items: center;
@@ -83,6 +87,10 @@
 
 .advanced .category-name {
   color: #da3633;
+}
+
+.developer .category-name {
+  color: #58a6ff;
 }
 
 .category-stats {

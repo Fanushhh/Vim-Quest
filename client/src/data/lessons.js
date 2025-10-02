@@ -324,6 +324,193 @@ export const lessons = [
       "Practice jumping between marks multiple times",
       "Final target is at the end of the last line"
     ]
+  },
+  {
+    id: 13,
+    title: "Function Navigation",
+    description: "Navigate through code like a pro",
+    difficulty: "developer",
+    instructions: "Jump to function definitions and navigate code blocks efficiently",
+    initialText: [
+      "function calculateTotal(items) {",
+      "  let sum = 0;",
+      "  for (let item of items) {",
+      "    sum += item.price;",
+      "  }",
+      "  return sum;",
+      "}",
+      "",
+      "function processOrder(order) {",
+      "  const total = calculateTotal(order.items);",
+      "  return { ...order, total };",
+      "}",
+      "",
+      "// Navigate to the X inside processOrder",
+      "// X is at the return statement"
+    ],
+    targetPosition: { row: 10, col: 9 },
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'gg', 'G', '{', '}', '/', '?', 'n', 'N', 'i', 'a', 'o', 'O', 'A', 'I', 'ESC', 'x', 'dd', 'dw', 'd$', 'v', 'V', 'd', 'u', 'ctrl+r', 'y', 'yy', 'p', 'P', 'yw', 'r', 'R', 'c', 'cw', 'm', "'"],
+    hints: [
+      "Use '}' to jump to next code block",
+      "Use '{' to jump back",
+      "Search for 'return' to find target quickly",
+      "Practice navigating between functions"
+    ]
+  },
+  {
+    id: 14,
+    title: "Refactoring Variables",
+    description: "Rename variables across code",
+    difficulty: "developer",
+    instructions: "Change all instances of 'oldName' to 'newName' using search and replace techniques",
+    initialText: [
+      "const oldName = 'value';",
+      "console.log(oldName);",
+      "function test(oldName) {",
+      "  return oldName.toUpperCase();",
+      "}",
+      "const result = test(oldName);"
+    ],
+    task: "replace",
+    targetState: [
+      "const newName = 'value';",
+      "console.log(newName);",
+      "function test(newName) {",
+      "  return newName.toUpperCase();",
+      "}",
+      "const result = test(newName);"
+    ],
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'gg', 'G', '{', '}', '/', '?', 'n', 'N', 'i', 'a', 'o', 'O', 'A', 'I', 'ESC', 'x', 'dd', 'dw', 'd$', 'v', 'V', 'd', 'u', 'ctrl+r', 'y', 'yy', 'p', 'P', 'yw', 'r', 'R', 'c', 'cw', 'm', "'"],
+    hints: [
+      "Search for 'oldName' using /oldName",
+      "Use 'cw' to change each word to 'newName'",
+      "Press 'n' to jump to next occurrence",
+      "Remember to press ESC after each change"
+    ]
+  },
+  {
+    id: 15,
+    title: "Comment Block Editing",
+    description: "Manage code comments efficiently",
+    difficulty: "developer",
+    instructions: "Add '//' at the start of each code line to comment them out",
+    initialText: [
+      "function debugFunction() {",
+      "  console.log('debug 1');",
+      "  console.log('debug 2');",
+      "  console.log('debug 3');",
+      "  return true;",
+      "}"
+    ],
+    task: "replace",
+    targetState: [
+      "function debugFunction() {",
+      "//  console.log('debug 1');",
+      "//  console.log('debug 2');",
+      "//  console.log('debug 3');",
+      "//  return true;",
+      "}"
+    ],
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'gg', 'G', '{', '}', '/', '?', 'n', 'N', 'i', 'a', 'o', 'O', 'A', 'I', 'ESC', 'x', 'dd', 'dw', 'd$', 'v', 'V', 'd', 'u', 'ctrl+r', 'y', 'yy', 'p', 'P', 'yw', 'r', 'R', 'c', 'cw', 'm', "'"],
+    hints: [
+      "Navigate to line 2, use 'I' to insert at beginning",
+      "Type '//' then press ESC",
+      "Repeat for each line that needs commenting",
+      "Use 'j' and 'I' to move efficiently between lines"
+    ]
+  },
+  {
+    id: 16,
+    title: "Code Block Deletion",
+    description: "Remove entire code sections",
+    difficulty: "developer",
+    instructions: "Delete the entire debug section while keeping the rest of the code intact",
+    initialText: [
+      "function main() {",
+      "  const data = fetchData();",
+      "  ",
+      "  // DEBUG START",
+      "  console.log('debug info');",
+      "  console.log('more debug');",
+      "  // DEBUG END",
+      "  ",
+      "  return processData(data);",
+      "}"
+    ],
+    task: "delete",
+    targetState: [
+      "function main() {",
+      "  const data = fetchData();",
+      "  ",
+      "  ",
+      "  return processData(data);",
+      "}"
+    ],
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'gg', 'G', '{', '}', '/', '?', 'n', 'N', 'i', 'a', 'o', 'O', 'A', 'I', 'ESC', 'x', 'dd', 'dw', 'd$', 'v', 'V', 'd', 'u', 'ctrl+r', 'y', 'yy', 'p', 'P', 'yw', 'r', 'R', 'c', 'cw', 'm', "'"],
+    hints: [
+      "Search for 'DEBUG START' to locate the section",
+      "Use 'dd' to delete lines one by one",
+      "Or use 'V' to select multiple lines and 'd' to delete",
+      "Keep the empty lines and function structure"
+    ]
+  },
+  {
+    id: 17,
+    title: "Import Statement Organization",
+    description: "Reorder and manage imports",
+    difficulty: "developer",
+    instructions: "Move the React import to the top and add a missing import",
+    initialText: [
+      "import { useState } from 'react';",
+      "import axios from 'axios';",
+      "import React from 'react';",
+      "import './styles.css';",
+      "",
+      "// React import should be first"
+    ],
+    task: "replace",
+    targetState: [
+      "import React from 'react';",
+      "import { useState } from 'react';",
+      "import axios from 'axios';",
+      "import './styles.css';",
+      "",
+      "// React import should be first"
+    ],
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'gg', 'G', '{', '}', '/', '?', 'n', 'N', 'i', 'a', 'o', 'O', 'A', 'I', 'ESC', 'x', 'dd', 'dw', 'd$', 'v', 'V', 'd', 'u', 'ctrl+r', 'y', 'yy', 'p', 'P', 'yw', 'r', 'R', 'c', 'cw', 'm', "'"],
+    hints: [
+      "Navigate to line 3 (React import)",
+      "Use 'dd' to cut the line",
+      "Use 'gg' to go to top",
+      "Use 'P' to paste before first line"
+    ]
+  },
+  {
+    id: 18,
+    title: "API Endpoint Correction",
+    description: "Fix API endpoint strings",
+    difficulty: "developer",
+    instructions: "Change all '/api/v1/' to '/api/v2/' in the endpoint URLs",
+    initialText: [
+      "const USERS_API = '/api/v1/users';",
+      "const POSTS_API = '/api/v1/posts';",
+      "const AUTH_API = '/api/v1/auth';",
+      "const DATA_API = '/api/v1/data';"
+    ],
+    task: "replace",
+    targetState: [
+      "const USERS_API = '/api/v2/users';",
+      "const POSTS_API = '/api/v2/posts';",
+      "const AUTH_API = '/api/v2/auth';",
+      "const DATA_API = '/api/v2/data';"
+    ],
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'gg', 'G', '{', '}', '/', '?', 'n', 'N', 'i', 'a', 'o', 'O', 'A', 'I', 'ESC', 'x', 'dd', 'dw', 'd$', 'v', 'V', 'd', 'u', 'ctrl+r', 'y', 'yy', 'p', 'P', 'yw', 'r', 'R', 'c', 'cw', 'm', "'"],
+    hints: [
+      "Search for 'v1' using /v1",
+      "Use 'r' twice to replace 'v1' with 'v2'",
+      "Or use 'cw' to change the word",
+      "Use 'n' to jump to next occurrence"
+    ]
   }
 ];
 

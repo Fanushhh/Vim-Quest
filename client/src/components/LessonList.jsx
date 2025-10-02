@@ -6,7 +6,8 @@ function LessonList({ lessons, progress, onStartLesson }) {
   const [expandedCategories, setExpandedCategories] = useState({
     beginner: true,
     intermediate: false,
-    advanced: false
+    advanced: false,
+    developer: false
   });
 
   const getLessonProgress = (lessonId) => {
@@ -33,7 +34,8 @@ function LessonList({ lessons, progress, onStartLesson }) {
   const groupedLessons = {
     beginner: lessons.filter(l => l.difficulty === 'beginner'),
     intermediate: lessons.filter(l => l.difficulty === 'intermediate'),
-    advanced: lessons.filter(l => l.difficulty === 'advanced')
+    advanced: lessons.filter(l => l.difficulty === 'advanced'),
+    developer: lessons.filter(l => l.difficulty === 'developer')
   };
 
   const getCategoryIcon = (difficulty) => {
@@ -41,6 +43,7 @@ function LessonList({ lessons, progress, onStartLesson }) {
       case 'beginner': return '🌱';
       case 'intermediate': return '⚡';
       case 'advanced': return '🏆';
+      case 'developer': return '💻';
       default: return '📚';
     }
   };
