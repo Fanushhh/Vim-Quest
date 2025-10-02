@@ -1,0 +1,142 @@
+.achievements-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.achievements-title {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  text-align: center;
+  color: #e6edf3;
+}
+
+.achievements-subtitle {
+  text-align: center;
+  opacity: 0.9;
+  margin-bottom: 30px;
+  font-size: 1.1rem;
+  color: #8b949e;
+}
+
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.achievement-card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  padding: 20px;
+  display: flex;
+  gap: 15px;
+  transition: all 0.2s ease;
+}
+
+.achievement-card.unlocked {
+  background: #0d1117;
+  border-color: #58a6ff;
+}
+
+.achievement-card.locked {
+  opacity: 0.5;
+  filter: grayscale(70%);
+}
+
+.achievement-card:hover {
+  border-color: #58a6ff;
+}
+
+.achievement-icon {
+  font-size: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.achievement-content {
+  flex: 1;
+}
+
+.achievement-title {
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+  color: #58a6ff;
+}
+
+.achievement-card.locked .achievement-title {
+  color: #6e7681;
+}
+
+.achievement-description {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  margin-bottom: 8px;
+  color: #8b949e;
+}
+
+.achievement-date {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  font-style: italic;
+  color: #6e7681;
+}
+
+.achievement-locked {
+  font-size: 0.85rem;
+  color: #6e7681;
+}
+
+.no-achievements {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 1.2rem;
+  opacity: 0.7;
+  color: #8b949e;
+}
+
+@media (max-width: 768px) {
+  .achievements-title {
+    font-size: 1.5rem;
+  }
+
+  .achievements-subtitle {
+    font-size: 1rem;
+  }
+
+  .achievements-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .achievement-card {
+    padding: 15px;
+  }
+
+  .achievement-icon {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .achievements-title {
+    font-size: 1.3rem;
+  }
+
+  .achievement-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .achievement-icon {
+    font-size: 2rem;
+  }
+
+  .achievement-title {
+    font-size: 1.1rem;
+  }
+
+  .no-achievements {
+    font-size: 1rem;
+    padding: 40px 15px;
+  }
+}

@@ -1,0 +1,195 @@
+.debug-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 20px;
+  background-color: #da3633;
+  color: white;
+  border: 1px solid #f85149;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  z-index: 1000;
+  transition: all 0.2s ease;
+}
+
+.debug-toggle:hover {
+  background-color: #f85149;
+}
+
+.debug-panel {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 500px;
+  max-height: 600px;
+  background-color: #0d1117;
+  border: 1px solid #30363d;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  color: #e6edf3;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.debug-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: #161b22;
+  border-bottom: 1px solid #30363d;
+}
+
+.debug-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #da3633;
+}
+
+.debug-header button {
+  background: none;
+  border: none;
+  color: #8b949e;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.debug-header button:hover {
+  color: #da3633;
+}
+
+.debug-tabs {
+  display: flex;
+  background-color: #161b22;
+  border-bottom: 1px solid #30363d;
+}
+
+.debug-tabs button {
+  flex: 1;
+  padding: 12px;
+  background: none;
+  border: none;
+  color: #6e7681;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.debug-tabs button:hover {
+  background-color: #21262d;
+  color: #e6edf3;
+}
+
+.debug-tabs button.active {
+  color: #58a6ff;
+  border-bottom-color: #58a6ff;
+  background-color: #0d1117;
+}
+
+.debug-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.debug-section h4 {
+  margin: 0 0 15px 0;
+  font-size: 14px;
+  color: #58a6ff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.debug-section pre {
+  background-color: #161b22;
+  padding: 15px;
+  font-size: 12px;
+  overflow-x: auto;
+  border: 1px solid #30363d;
+  color: #3fb950;
+}
+
+.debug-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.debug-section li {
+  padding: 8px 12px;
+  margin-bottom: 5px;
+  background-color: #161b22;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  border-left: 3px solid #30363d;
+}
+
+.cmd-index {
+  color: #6e7681;
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+.cmd-name {
+  color: #3fb950;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+}
+
+.error-item {
+  border-left-color: #da3633;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.error-time {
+  color: #6e7681;
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+
+.error-message {
+  color: #da3633;
+  font-weight: 500;
+}
+
+.no-errors {
+  color: #3fb950;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+.debug-section p {
+  color: #6e7681;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+/* Scrollbar styling */
+.debug-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.debug-content::-webkit-scrollbar-track {
+  background: #0d1117;
+}
+
+.debug-content::-webkit-scrollbar-thumb {
+  background: #30363d;
+}
+
+.debug-content::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}

@@ -1,0 +1,284 @@
+.vim-simulator {
+  background: #161b22;
+  border: 1px solid #30363d;
+  padding: 20px;
+  font-family: 'Courier New', monospace;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.vim-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  margin-bottom: 15px;
+}
+
+.vim-mode {
+  color: #4ec9b0;
+  font-weight: bold;
+}
+
+.vim-stats {
+  display: flex;
+  gap: 20px;
+  color: #dcdcaa;
+}
+
+.vim-editor {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  padding: 20px;
+  min-height: 300px;
+  overflow-x: auto;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.vim-line {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.line-number {
+  color: #858585;
+  min-width: 40px;
+  text-align: right;
+  margin-right: 15px;
+  user-select: none;
+}
+
+.line-content {
+  flex: 1;
+  white-space: pre;
+}
+
+.char {
+  color: #d4d4d4;
+  position: relative;
+}
+
+.char.cursor {
+  background: #00ff00;
+  color: #000;
+  animation: blink 1s infinite;
+}
+
+.char.target {
+  background: #da3633;
+  color: #fff;
+  font-weight: bold;
+  padding: 2px 4px;
+}
+
+.char.selected {
+  background: #264f78;
+  color: #fff;
+}
+
+.char.cursor.selected {
+  background: #00ff00;
+  color: #000;
+}
+
+@keyframes blink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0.5;
+  }
+}
+
+.vim-footer {
+  margin-top: 15px;
+  padding: 15px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+}
+
+.vim-message {
+  color: #58a6ff;
+  font-weight: bold;
+  margin-bottom: 10px;
+  padding: 10px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  text-align: center;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vim-hints {
+  color: #dcdcaa;
+}
+
+.hint-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #569cd6;
+}
+
+.hint {
+  margin: 5px 0;
+  padding-left: 10px;
+  color: #9cdcfe;
+  font-size: 14px;
+}
+
+.completion-panel {
+  background: #161b22;
+  border: 2px solid #3fb950;
+  padding: 20px;
+  margin-top: 10px;
+}
+
+.completion-stats {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.stat-label {
+  color: #8b949e;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.stat-value {
+  color: #3fb950;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.completion-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.btn-next,
+.btn-back {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.btn-next {
+  background: #238636;
+  color: #ffffff;
+}
+
+.btn-next:hover {
+  background: #2ea043;
+}
+
+.btn-back {
+  background: #21262d;
+  color: #c9d1d9;
+  border: 1px solid #30363d;
+}
+
+.btn-back:hover {
+  background: #30363d;
+  border-color: #8b949e;
+}
+
+@media (max-width: 768px) {
+  .vim-simulator {
+    padding: 10px;
+    max-width: 100%;
+  }
+
+  .vim-header {
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .vim-stats {
+    flex-direction: column;
+    gap: 5px;
+    align-items: center;
+  }
+
+  .vim-editor {
+    padding: 10px;
+    font-size: 14px;
+    overflow-x: auto;
+  }
+
+  .line-number {
+    min-width: 30px;
+    margin-right: 10px;
+  }
+
+  .vim-footer {
+    padding: 10px;
+  }
+
+  .completion-stats {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .completion-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .btn-next,
+  .btn-back {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .vim-simulator {
+    padding: 5px;
+  }
+
+  .vim-editor {
+    font-size: 12px;
+    padding: 8px;
+  }
+
+  .vim-header {
+    padding: 8px;
+  }
+
+  .vim-mode,
+  .vim-stats {
+    font-size: 0.9rem;
+  }
+
+  .hint {
+    font-size: 0.85rem;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+}

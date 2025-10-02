@@ -1,0 +1,16 @@
+{
+  "name": "vim-quest",
+  "version": "1.0.0",
+  "description": "Interactive Vim learning game with progress tracking",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install"
+  },
+  "keywords": ["vim", "learning", "game"],
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

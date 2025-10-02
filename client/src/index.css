@@ -1,0 +1,54 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Courier New', monospace;
+  background: #0d1117;
+  min-height: 100vh;
+  color: #e6edf3;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  transition: all 0.2s ease;
+  border-radius: 0;
+}
+
+button:hover {
+  transform: none;
+  opacity: 0.9;
+}
+
+input {
+  font-family: 'Courier New', monospace;
+  border-radius: 0;
+}
+
+/* Ensure text is properly centered in all buttons globally */
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Responsive font scaling */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    font-size: 13px;
+  }
+}

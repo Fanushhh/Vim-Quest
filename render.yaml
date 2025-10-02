@@ -1,0 +1,26 @@
+services:
+  # Backend API Service
+  - type: web
+    name: vim-quest-api
+    env: node
+    buildCommand: cd server && npm install
+    startCommand: cd server && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PORT
+        value: 3001
+      - key: CLIENT_URL
+        sync: false
+
+  # Frontend Static Site
+  - type: web
+    name: vim-quest-frontend
+    env: static
+    buildCommand: cd client && npm install && npm run build
+    staticPublishPath: ./client/dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false
