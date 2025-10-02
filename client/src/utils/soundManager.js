@@ -9,70 +9,113 @@ class SoundManager {
 
   init() {
     if (!this.audioContext) {
-      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      try {
+        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('AudioContext initialized, state:', this.audioContext.state);
+      } catch (error) {
+        console.error('Failed to initialize AudioContext:', error);
+      }
     }
   }
 
-  playRetroSound() {
-    if (!this.enabled) return;
+  // Call this method on user interaction to ensure audio context is ready
+  async ensureAudioContext() {
     this.init();
-
-    const oscillator = this.audioContext.createOscillator();
-    const gainNode = this.audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-
-    // Retro 8-bit style sound
-    oscillator.type = 'square';
-    oscillator.frequency.setValueAtTime(523.25, this.audioContext.currentTime); // C5
-    oscillator.frequency.setValueAtTime(659.25, this.audioContext.currentTime + 0.1); // E5
-    oscillator.frequency.setValueAtTime(783.99, this.audioContext.currentTime + 0.2); // G5
-
-    gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
-
-    oscillator.start(this.audioContext.currentTime);
-    oscillator.stop(this.audioContext.currentTime + 0.3);
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      try {
+        await this.audioContext.resume();
+        console.log('AudioContext resumed, state:', this.audioContext.state);
+      } catch (error) {
+        console.error('Failed to resume AudioContext:', error);
+      }
+    }
   }
 
-  playEpicSound() {
+  async playRetroSound() {
     if (!this.enabled) return;
     this.init();
 
-    // Epic orchestral-style sound (multiple tones)
-    const frequencies = [261.63, 329.63, 392.00, 523.25]; // C-E-G-C chord
-    const duration = 0.8;
+    try {
+      // Resume audio context if suspended (needed for autoplay policies)
+      if (this.audioContext.state === 'suspended') {
+        await this.audioContext.resume();
+      }
 
-    frequencies.forEach((freq, index) => {
       const oscillator = this.audioContext.createOscillator();
       const gainNode = this.audioContext.createGain();
 
       oscillator.connect(gainNode);
       gainNode.connect(this.audioContext.destination);
 
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime);
+      // Retro 8-bit style sound - play 3 ascending notes
+      oscillator.type = 'square';
+      const now = this.audioContext.currentTime;
 
-      const startTime = this.audioContext.currentTime + (index * 0.1);
-      gainNode.gain.setValueAtTime(0.15, startTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+      oscillator.frequency.setValueAtTime(523.25, now); // C5
+      oscillator.frequency.setValueAtTime(659.25, now + 0.1); // E5
+      oscillator.frequency.setValueAtTime(783.99, now + 0.2); // G5
 
-      oscillator.start(startTime);
-      oscillator.stop(startTime + duration);
-    });
+      gainNode.gain.setValueAtTime(0.15, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+
+      oscillator.start(now);
+      oscillator.stop(now + 0.4);
+    } catch (error) {
+      console.error('Error playing retro sound:', error);
+    }
   }
 
-  playSoundForPack(soundPack) {
+  async playEpicSound() {
+    if (!this.enabled) return;
+    this.init();
+
+    try {
+      // Resume audio context if suspended (needed for autoplay policies)
+      if (this.audioContext.state === 'suspended') {
+        await this.audioContext.resume();
+      }
+
+      // Epic orchestral-style sound (multiple tones)
+      const frequencies = [261.63, 329.63, 392.00, 523.25]; // C-E-G-C chord
+      const duration = 0.8;
+      const now = this.audioContext.currentTime;
+
+      frequencies.forEach((freq, index) => {
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(freq, now);
+
+        const startTime = now + (index * 0.1);
+        gainNode.gain.setValueAtTime(0.075, startTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+
+        oscillator.start(startTime);
+        oscillator.stop(startTime + duration);
+      });
+    } catch (error) {
+      console.error('Error playing epic sound:', error);
+    }
+  }
+
+  async playSoundForPack(soundPack) {
+    if (!soundPack) return;
+
+    console.log('Playing sound for pack:', soundPack);
+
     switch (soundPack) {
       case 'sound_pack_retro':
-        this.playRetroSound();
+        await this.playRetroSound();
         break;
       case 'sound_pack_epic':
-        this.playEpicSound();
+        await this.playEpicSound();
         break;
       default:
-        // No sound
+        console.warn('Unknown sound pack:', soundPack);
         break;
     }
   }

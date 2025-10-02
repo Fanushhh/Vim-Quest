@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { shopItems } from '../data/shop';
+import soundManager from '../utils/soundManager';
 import './Profile.css';
 
 function Profile({ username, purchasedItems, activeCustomizations, onCustomizationChange, onAddPoints, devMode, onToggleDevMode }) {
@@ -25,6 +26,15 @@ function Profile({ username, purchasedItems, activeCustomizations, onCustomizati
 
   const handleSelect = (itemId, type) => {
     onCustomizationChange(type, itemId);
+  };
+
+  const handleTestSound = async () => {
+    if (activeCustomizations.sound_pack) {
+      await soundManager.ensureAudioContext();
+      await soundManager.playSoundForPack(activeCustomizations.sound_pack);
+    } else {
+      alert('Please equip a sound pack first!');
+    }
   };
 
   const renderCustomizationSection = (title, items, type, icon) => (
@@ -158,11 +168,28 @@ function Profile({ username, purchasedItems, activeCustomizations, onCustomizati
           </>
         )}
 
-        {activeTab === 'audio' && renderCustomizationSection(
-          'Sound Packs',
-          soundPacks,
-          'sound_pack',
-          '🎵'
+        {activeTab === 'audio' && (
+          <>
+            {renderCustomizationSection(
+              'Sound Packs',
+              soundPacks,
+              'sound_pack',
+              '🎵'
+            )}
+            {activeCustomizations.sound_pack && (
+              <div className="customization-section">
+                <h3 className="section-title">🎧 Test Sound</h3>
+                <div className="test-sound-container">
+                  <p className="test-sound-description">
+                    Click the button below to test your active sound pack
+                  </p>
+                  <button className="test-sound-btn" onClick={handleTestSound}>
+                    🔊 Play Test Sound
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {activeTab === 'display' && renderCustomizationSection(

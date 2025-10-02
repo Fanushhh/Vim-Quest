@@ -1,0 +1,241 @@
+.streak-display {
+  background: linear-gradient(135deg, #2e1a1f 0%, #151922 100%);
+  border: 2px solid #ff6b35;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.1);
+  transition: all 0.3s ease;
+}
+
+.streak-display:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 107, 53, 0.2);
+}
+
+.streak-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.streak-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.streak-icon {
+  font-size: 3rem;
+  animation: flicker 2s ease-in-out infinite;
+}
+
+@keyframes flicker {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(255, 107, 53, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(255, 107, 53, 1));
+  }
+}
+
+.streak-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.current-streak {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.streak-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ff6b35;
+  line-height: 1;
+}
+
+.streak-label {
+  font-size: 0.9rem;
+  color: #8b949e;
+  font-weight: 500;
+}
+
+.longest-streak {
+  font-size: 0.85rem;
+  color: #6e7681;
+}
+
+.streak-freezes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(135, 206, 250, 0.1);
+  padding: 8px 12px;
+  border-radius: 20px;
+  border: 1px solid #87ceeb;
+}
+
+.freeze-icon {
+  font-size: 1.2rem;
+}
+
+.freeze-count {
+  font-weight: 700;
+  color: #87ceeb;
+  font-size: 1rem;
+}
+
+.streak-calendar {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #30363d;
+}
+
+.streak-calendar h4 {
+  margin: 0 0 16px 0;
+  color: #c9d1d9;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #6e7681;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.calendar-day.active {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%);
+  border-color: #ff6b35;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+}
+
+.calendar-day.today {
+  border: 2px solid #ffd700;
+  border-radius: 6px;
+}
+
+.calendar-day.today.active {
+  background: linear-gradient(135deg, #ffd700 0%, #ff6b35 100%);
+  animation: todayPulse 2s ease-in-out infinite;
+}
+
+@keyframes todayPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(255, 215, 0, 0.8);
+  }
+}
+
+.day-number {
+  font-size: 0.7rem;
+}
+
+.calendar-legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #8b949e;
+}
+
+.legend-box {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #30363d;
+  border-radius: 3px;
+  background: #21262d;
+}
+
+.legend-box.active {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%);
+  border-color: #ff6b35;
+}
+
+.legend-box.today {
+  border: 2px solid #ffd700;
+}
+
+.streak-motivation {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 0.95rem;
+  color: #ff6b35;
+  font-weight: 600;
+  padding: 12px;
+  background: rgba(255, 107, 53, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 107, 53, 0.3);
+}
+
+.streak-display.loading {
+  border-color: #30363d;
+  background: #161b22;
+  text-align: center;
+  color: #8b949e;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .streak-display {
+    padding: 16px;
+  }
+
+  .streak-icon {
+    font-size: 2.5rem;
+  }
+
+  .streak-number {
+    font-size: 1.6rem;
+  }
+
+  .calendar-grid {
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+
+  .calendar-day {
+    font-size: 0.65rem;
+  }
+
+  .day-number {
+    font-size: 0.6rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendar-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}

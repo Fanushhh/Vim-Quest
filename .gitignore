@@ -37,3 +37,6 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Internal planning
+ROADMAP.md

@@ -143,7 +143,9 @@
 .stat-label {
   font-size: 0.85rem;
   opacity: 0.8;
-  color: #8b949e;
+  color: #e6edf3;
+  font-weight: bold;
+  margin-top: 2px;
 }
 
 .logout-button {
@@ -205,6 +207,20 @@
   box-sizing: border-box;
   overflow-x: hidden;
   box-shadow: 0 4px 12px var(--theme-shadow);
+}
+
+.daily-widgets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 768px) {
+  .daily-widgets {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 
 .lesson-container {

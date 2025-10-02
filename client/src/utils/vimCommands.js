@@ -213,10 +213,9 @@ export function deleteText(textLines, cursorPos, command, visualStart = null, mo
     const line = newLines[cursorPos.row];
 
     if (line && visualStart.row === cursorPos.row) {
-      // Visual mode delete: from start up to (but NOT including) cursor position
-      // This matches Vim behavior where 'w' moves to next word but visual delete
-      // doesn't include that first character of the next word
-      const newLine = line.slice(0, start) + line.slice(end);
+      // Visual mode delete: from start to end inclusive
+      // In Vim, visual selection includes the character under the cursor
+      const newLine = line.slice(0, start) + line.slice(end + 1);
       newLines[cursorPos.row] = newLine;
       // Ensure cursor doesn't exceed new line length
       newCursorPos.col = Math.min(start, Math.max(0, newLine.length - 1));

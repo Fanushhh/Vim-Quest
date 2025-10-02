@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import LessonList from './LessonList';
 import VimSimulatorRefactored from './VimSimulatorRefactored';
 import Achievements from './Achievements';
 import Shop from './Shop';
 import Profile from './Profile';
+import DailyChallengeCompact from './DailyChallengeCompact';
+import StreakCompact from './StreakCompact';
 import { lessons, achievements as achievementList } from '../data/lessons';
 import { shopItems } from '../data/shop';
 import { API_URL } from '../config';
@@ -33,6 +35,8 @@ function Dashboard({ username, token, onLogout }) {
     extraHints: 0,
     streakFreeze: 0
   });
+  const dailyChallengeRef = useRef(null);
+  const streakRef = useRef(null);
 
   useEffect(() => {
     fetchProgress();
@@ -215,9 +219,21 @@ function Dashboard({ username, token, onLogout }) {
         setActiveBoosters(newBoosters);
         await saveBoosters(newBoosters);
       } else if (itemId === 'special_streak_freeze') {
-        const newBoosters = { ...activeBoosters, streakFreeze: activeBoosters.streakFreeze + item.quantity };
-        setActiveBoosters(newBoosters);
-        await saveBoosters(newBoosters);
+        // Directly add to streak freeze count via dedicated API
+        try {
+          await fetch(`${API_URL}/api/streak/freeze`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ amount: item.quantity })
+          });
+          const newBoosters = { ...activeBoosters, streakFreeze: activeBoosters.streakFreeze + item.quantity };
+          setActiveBoosters(newBoosters);
+        } catch (error) {
+          console.error('Failed to add streak freeze:', error);
+        }
       }
       // Don't add consumables to purchased items (they're one-time use)
     } else {
@@ -598,8 +614,10 @@ function Dashboard({ username, token, onLogout }) {
     if (newAchievements.length > 0) {
       await fetchAchievements();
       // Play achievement sound
+      console.log('New achievements unlocked:', newAchievements);
+      console.log('Active sound pack:', activeCustomizations.sound_pack);
       if (activeCustomizations.sound_pack) {
-        soundManager.playSoundForPack(activeCustomizations.sound_pack);
+        await soundManager.playSoundForPack(activeCustomizations.sound_pack);
       }
     }
   };
@@ -607,11 +625,27 @@ function Dashboard({ username, token, onLogout }) {
   const handleLessonComplete = (data) => {
     saveProgress(data);
     setSessionLessonsCompleted(prev => prev + 1);
+
+    // Check if daily challenge is completed
+    if (dailyChallengeRef.current?.checkChallengeCompletion) {
+      dailyChallengeRef.current.checkChallengeCompletion(data);
+    }
     // Don't redirect anymore - let user choose
+  };
+
+  const handleChallengeComplete = () => {
+    // Refresh streak and achievements when challenge is completed
+    fetchAchievements();
+    // Force streak refresh
+    if (streakRef.current?.refreshStreak) {
+      streakRef.current.refreshStreak();
+    }
   };
 
   const handleStartLesson = (lesson) => {
     setCurrentLesson(lesson);
+    // Initialize audio context on user interaction
+    soundManager.ensureAudioContext();
   };
 
   const handleBackToLessons = () => {
@@ -674,6 +708,12 @@ function Dashboard({ username, token, onLogout }) {
               <span className="stat-value">{achievements.length}</span>
               <span className="stat-label">Achievements</span>
             </div>
+            <StreakCompact ref={streakRef} token={token} />
+            <DailyChallengeCompact
+              ref={dailyChallengeRef}
+              token={token}
+              onChallengeComplete={handleChallengeComplete}
+            />
           </div>
           <button className="logout-button" onClick={onLogout}>Logout</button>
         </div>

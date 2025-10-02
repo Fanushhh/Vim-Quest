@@ -64,6 +64,37 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES users(id),
     UNIQUE(user_id, booster_type)
   );
+
+  CREATE TABLE IF NOT EXISTS daily_challenges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    challenge_date DATE NOT NULL UNIQUE,
+    challenge_type TEXT NOT NULL,
+    challenge_data TEXT NOT NULL,
+    points_reward INTEGER DEFAULT 50,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS user_daily_completions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    challenge_id INTEGER NOT NULL,
+    completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    time_taken INTEGER,
+    score INTEGER,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (challenge_id) REFERENCES daily_challenges(id),
+    UNIQUE(user_id, challenge_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS user_streaks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE,
+    current_streak INTEGER DEFAULT 0,
+    longest_streak INTEGER DEFAULT 0,
+    last_activity_date DATE,
+    streak_freeze_count INTEGER DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
 `);
 
 export default db;
