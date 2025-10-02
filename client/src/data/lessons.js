@@ -39,7 +39,7 @@ export const lessons = [
       "Use e to reach end of words like example here",
       "The X marks your final target: here X is your goal"
     ],
-    targetPosition: { row: 4, col: 38 },
+    targetPosition: { row: 4, col: 37 },
     allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e'],
     hints: [
       "Use 'w' to jump forward by words",
@@ -77,14 +77,16 @@ export const lessons = [
     difficulty: "beginner",
     instructions: "Add the word 'vim' in three different places using i, a, and o",
     initialText: [
-      "Insert vim before this word: editor",
-      "Append vim after this:",
-      "Open a new line and type vim below this line"
+      "Insert the magic word before this word: editor",
+      "Append the magic word after this:",
+      "Open a new line and type the magic word below this line"
     ],
     task: "insert",
     targetText: "vim",
-    allowedCommands: ['h', 'j', 'k', 'l', 'i', 'a', 'o', 'O', 'A', 'I', 'ESC'],
+    targetCount: 3,
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'i', 'a', 'o', 'O', 'A', 'I', 'ESC'],
     hints: [
+      "The magic word is 'vim'",
       "First: Use 'i' to insert 'vim' before 'editor' on line 1",
       "Second: Use 'A' to append 'vim' at end of line 2",
       "Third: Use 'o' to open new line and type 'vim'",
@@ -114,7 +116,7 @@ export const lessons = [
       "Keep this line as well",
       "Remove single char: x here and here: y"
     ],
-    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', 'x', 'dd', 'dw', 'd$'],
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'x', 'dd', 'dw', 'd$'],
     hints: [
       "Use 'dd' to delete entire lines",
       "Use 'dw' to delete words",
@@ -143,7 +145,7 @@ export const lessons = [
       "Remove from this sentence",
       "Practice visual selection"
     ],
-    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'v', 'V', 'd', 'x', 'ESC'],
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'v', 'V', 'd', 'x', 'ESC'],
     hints: [
       "Use 'v' to enter character-wise visual mode",
       "Use 'V' to enter line-wise visual mode",
@@ -169,7 +171,7 @@ export const lessons = [
       "Practice makes perfect with target searching"
     ],
     targetPosition: { row: 6, col: 11 },
-    allowedCommands: ['h', 'j', 'k', 'l', '/', '?', 'n', 'N'],
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', '/', '?', 'n', 'N'],
     hints: [
       "Type '/target' and press Enter to start searching",
       "Press 'n' to jump to next match",
@@ -193,7 +195,7 @@ export const lessons = [
       "Master time travel in Vim"
     ],
     task: "undo",
-    allowedCommands: ['h', 'j', 'k', 'l', 'u', 'ctrl+r', 'dd', 'x', 'dw'],
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'u', 'ctrl+r', 'dd', 'x', 'dw', 'd$'],
     hints: [
       "Step 1: Delete lines 2, 3, and 4 one by one using 'dd'",
       "Step 2: Press 'u' three times to undo all deletions",
@@ -218,7 +220,7 @@ export const lessons = [
       "And paste before this line using P"
     ],
     task: "copy",
-    allowedCommands: ['h', 'j', 'k', 'l', 'y', 'yy', 'p', 'P', 'yw', 'v', 'd'],
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'y', 'yy', 'p', 'P', 'yw', 'v', 'd', 'ESC'],
     hints: [
       "Use 'yy' to yank entire lines",
       "Use 'yw' to yank individual words",
@@ -252,7 +254,7 @@ export const lessons = [
       "Find the X at the bottom X"
     ],
     targetPosition: { row: 15, col: 25 },
-    allowedCommands: ['h', 'j', 'k', 'l', 'gg', 'G', '{', '}', 'w', 'b', 'e', '$', '0'],
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'gg', 'G', '{', '}'],
     hints: [
       "Use 'gg' to jump to the top of the document",
       "Use 'G' to jump to the bottom",
@@ -285,7 +287,7 @@ export const lessons = [
       "Replace A with B: testing B here",
       "Use Replace mode: correct_word_here"
     ],
-    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '$', '0', 'r', 'R', 'c', 'cw', 'ESC', 'i', 'a'],
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'gg', 'G', 'r', 'R', 'c', 'cw', 'ESC', 'i', 'a'],
     hints: [
       "Use 'r' to replace single characters",
       "Use 'cw' to change entire words",
@@ -313,7 +315,7 @@ export const lessons = [
       "Final target after jumping to all marks X"
     ],
     targetPosition: { row: 9, col: 42 },
-    allowedCommands: ['h', 'j', 'k', 'l', 'm', "'", 'a', 'b', 'c', 'w', 'b', 'gg', 'G'],
+    allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'gg', 'G', '{', '}', 'm', "'", 'a', 'b', 'c'],
     hints: [
       "Set mark 'a' on line 1 with 'ma'",
       "Set mark 'b' on line 3 with 'mb'",

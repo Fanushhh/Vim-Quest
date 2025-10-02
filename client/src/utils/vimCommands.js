@@ -324,8 +324,21 @@ export function checkTaskCompletion(lesson, textLines, cursorPos, startTime, mis
   // Insert task completion
   if (lesson.task === 'insert' && lesson.targetText) {
     const allText = textLines.join(' ');
-    if (allText.includes(lesson.targetText)) {
-      return createCompletionResult(lesson.id, startTime, mistakes);
+
+    // If targetCount is specified, count occurrences
+    if (lesson.targetCount) {
+      const regex = new RegExp(lesson.targetText, 'gi');
+      const matches = allText.match(regex);
+      const count = matches ? matches.length : 0;
+
+      if (count >= lesson.targetCount) {
+        return createCompletionResult(lesson.id, startTime, mistakes);
+      }
+    } else {
+      // Otherwise, just check if it appears at least once
+      if (allText.includes(lesson.targetText)) {
+        return createCompletionResult(lesson.id, startTime, mistakes);
+      }
     }
   }
 

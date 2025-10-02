@@ -1,10 +1,9 @@
 .vim-simulator {
   background: #161b22;
   border: 1px solid #30363d;
-  padding: 20px;
+  padding: 24px;
   font-family: 'Courier New', monospace;
-  max-width: 900px;
-  margin: 0 auto;
+  margin: 0;
 }
 
 .vim-header {
@@ -120,8 +119,61 @@
 
 .hint-title {
   font-weight: bold;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   color: #569cd6;
+  font-size: 16px;
+}
+
+.hint-item {
+  margin-bottom: 8px;
+}
+
+.hint-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #161b22;
+  border: 1px solid #30363d;
+  padding: 10px 15px;
+  color: #9cdcfe;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.hint-toggle:hover {
+  background: #21262d;
+  border-color: #58a6ff;
+}
+
+.hint-toggle.expanded {
+  border-bottom-color: #58a6ff;
+}
+
+.hint-number {
+  font-weight: 600;
+  color: #58a6ff;
+}
+
+.hint-arrow {
+  color: #8b949e;
+  font-size: 12px;
+}
+
+.hint-content {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-top: none;
+  overflow: hidden;
+}
+
+.hint-content-inner {
+  padding: 12px 15px;
+  color: #9cdcfe;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .hint {

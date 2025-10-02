@@ -82,6 +82,46 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
       return;
     }
 
+    if (command === 'o') {
+      // Open line below
+      dispatch({ type: 'SAVE_STATE_FOR_UNDO' });
+      const newLines = [...state.textLines];
+      newLines.splice(state.cursorPos.row + 1, 0, '');
+      dispatch({ type: 'SET_TEXT_LINES', payload: newLines });
+      dispatch({ type: 'SET_CURSOR', payload: { row: state.cursorPos.row + 1, col: 0 } });
+      dispatch({ type: 'ENTER_INSERT_MODE' });
+      return;
+    }
+
+    if (command === 'O') {
+      // Open line above
+      dispatch({ type: 'SAVE_STATE_FOR_UNDO' });
+      const newLines = [...state.textLines];
+      newLines.splice(state.cursorPos.row, 0, '');
+      dispatch({ type: 'SET_TEXT_LINES', payload: newLines });
+      dispatch({ type: 'SET_CURSOR', payload: { row: state.cursorPos.row, col: 0 } });
+      dispatch({ type: 'ENTER_INSERT_MODE' });
+      return;
+    }
+
+    if (command === 'A') {
+      // Append at end of line
+      const endCol = state.textLines[state.cursorPos.row]?.length || 0;
+      dispatch({ type: 'SET_CURSOR', payload: { ...state.cursorPos, col: endCol } });
+      dispatch({ type: 'ENTER_INSERT_MODE' });
+      return;
+    }
+
+    if (command === 'I') {
+      // Insert at beginning of line (first non-blank)
+      const currentLine = state.textLines[state.cursorPos.row] || '';
+      const firstNonBlank = currentLine.search(/\S/);
+      const newCol = firstNonBlank === -1 ? 0 : firstNonBlank;
+      dispatch({ type: 'SET_CURSOR', payload: { ...state.cursorPos, col: newCol } });
+      dispatch({ type: 'ENTER_INSERT_MODE' });
+      return;
+    }
+
     if (command === 'v') {
       if (state.mode === 'visual') {
         dispatch({ type: 'EXIT_TO_NORMAL' });
@@ -537,7 +577,8 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
         'h': 'h', 'j': 'j', 'k': 'k', 'l': 'l',
         'w': 'w', 'b': 'b', 'e': 'e',
         '0': '0', '$': '$', '^': '^',
-        'i': 'i', 'a': 'a', 'o': 'o',
+        'i': 'i', 'a': 'a', 'o': 'o', 'O': 'O',
+        'A': 'A', 'I': 'I',
         'Escape': 'ESC',
         'v': 'v', 'V': 'V',
         'G': 'G',

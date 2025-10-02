@@ -281,7 +281,7 @@ function Dashboard({ username, token, onLogout }) {
             <button className="back-button" onClick={handleBackToLessons}>
               ← Back to Lessons
             </button>
-            <div className="lesson-info">
+            <div className="simulator-header">
               <h2>
                 <span className="lesson-number-small">#{currentLesson.id}</span>
                 {currentLesson.title}
