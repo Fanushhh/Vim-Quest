@@ -1,3 +1,16 @@
+:root {
+  --theme-primary: #161b22;
+  --theme-secondary: #58a6ff;
+  --theme-accent: #3fb950;
+  --theme-background: #0d1117;
+  --theme-card-bg: #161b22;
+  --theme-border: #30363d;
+  --theme-hover-bg: #1c2128;
+  --theme-hover-border: #58a6ff;
+  --theme-shadow: rgba(0, 0, 0, 0.3);
+  --theme-gradient: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+}
+
 .dashboard {
   min-height: 100vh;
   padding: 20px;
@@ -15,24 +28,93 @@
 }
 
 .dashboard-header {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--theme-gradient);
+  border: 1px solid var(--theme-border);
   padding: 25px;
   margin-bottom: 25px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  box-shadow: 0 4px 12px var(--theme-shadow);
 }
 
 .header-left h1 {
   font-size: 2rem;
   margin-bottom: 5px;
   color: #e6edf3;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dev-mode-badge {
+  font-size: 0.6rem;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #da3633 0%, #f85149 100%);
+  color: #fff;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  animation: pulse-glow 2s ease-in-out infinite;
+  box-shadow: 0 0 10px rgba(248, 81, 73, 0.5);
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(248, 81, 73, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(248, 81, 73, 0.8);
+  }
+}
+
+@keyframes pulse-glow-gold {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
+  }
+}
+
+.booster-badge {
+  font-size: 0.6rem;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.booster-badge.double-xp {
+  background: linear-gradient(135deg, #f59e0b 0%, #eab308 100%);
+  color: #000;
+  animation: pulse-glow-gold 2s ease-in-out infinite;
+}
+
+.booster-info {
+  font-size: 0.75rem;
+  color: #fbbf24;
+  font-weight: 600;
+  padding: 2px 8px;
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
 }
 
 .welcome {
   opacity: 0.9;
   color: #8b949e;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-title {
+  font-size: 0.9rem;
+  color: #fbbf24;
+  font-style: italic;
+  font-weight: 600;
 }
 
 .header-right {
@@ -55,7 +137,7 @@
 .stat-value {
   font-size: 2rem;
   font-weight: bold;
-  color: #58a6ff;
+  color: var(--theme-secondary);
 }
 
 .stat-label {
@@ -66,17 +148,20 @@
 
 .logout-button {
   padding: 10px 20px;
-  background: #21262d;
-  border: 1px solid #30363d;
+  background: var(--theme-card-bg);
+  border: 1px solid var(--theme-border);
   color: #e6edf3;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s;
 }
 
 .logout-button:hover {
-  background: #30363d;
+  background: var(--theme-hover-bg);
+  border-color: var(--theme-hover-border);
+  box-shadow: 0 2px 8px var(--theme-shadow);
 }
 
 .dashboard-nav {
@@ -87,30 +172,39 @@
 
 .nav-button {
   padding: 12px 24px;
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--theme-card-bg);
+  border: 1px solid var(--theme-border);
   color: #e6edf3;
   font-size: 1rem;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s;
+}
+
+.nav-button:hover {
+  border-color: var(--theme-hover-border);
+  background: var(--theme-hover-bg);
+  box-shadow: 0 2px 6px var(--theme-shadow);
 }
 
 .nav-button.active {
-  background: #21262d;
-  border-color: #58a6ff;
-  color: #58a6ff;
+  background: var(--theme-primary);
+  border-color: var(--theme-secondary);
+  color: var(--theme-secondary);
+  box-shadow: 0 0 12px var(--theme-shadow);
 }
 
 .dashboard-content {
-  background: #161b22;
-  border: 1px solid #30363d;
+  background: var(--theme-card-bg);
+  border: 1px solid var(--theme-border);
   padding: 25px;
   min-height: 400px;
   width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
+  box-shadow: 0 4px 12px var(--theme-shadow);
 }
 
 .lesson-container {
@@ -123,18 +217,21 @@
 
 .back-button {
   padding: 10px 20px;
-  background: #21262d;
-  border: 1px solid #30363d;
+  background: var(--theme-card-bg);
+  border: 1px solid var(--theme-border);
   color: #e6edf3;
   margin-bottom: 20px;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s;
 }
 
 .back-button:hover {
-  background: #30363d;
+  background: var(--theme-hover-bg);
+  border-color: var(--theme-hover-border);
+  box-shadow: 0 2px 6px var(--theme-shadow);
 }
 
 .lesson-info {
@@ -148,14 +245,14 @@
 
 /* Simulator Header Styling */
 .simulator-header {
-  background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
-  border: 1px solid #30363d;
-  border-bottom: 2px solid #58a6ff;
+  background: var(--theme-gradient);
+  border: 1px solid var(--theme-border);
+  border-bottom: 2px solid var(--theme-secondary);
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px var(--theme-shadow);
 }
 
 .simulator-header h2 {
@@ -164,7 +261,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #58a6ff;
+  color: var(--theme-secondary);
   font-weight: 700;
   letter-spacing: -0.3px;
 }
@@ -172,11 +269,11 @@
 .lesson-number-small {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #58a6ff;
-  background: rgba(88, 166, 255, 0.1);
+  color: var(--theme-secondary);
+  background: color-mix(in srgb, var(--theme-secondary) 10%, transparent);
   padding: 4px 12px;
   border-radius: 6px;
-  border: 1px solid rgba(88, 166, 255, 0.3);
+  border: 1px solid color-mix(in srgb, var(--theme-secondary) 30%, transparent);
 }
 
 .simulator-header .lesson-description {
@@ -199,8 +296,8 @@
 .simulator-header .lesson-instructions {
   margin: 8px 0 0 0;
   padding: 12px 16px;
-  background: rgba(88, 166, 255, 0.05);
-  border-left: 3px solid #58a6ff;
+  background: color-mix(in srgb, var(--theme-secondary) 5%, transparent);
+  border-left: 3px solid var(--theme-secondary);
   color: #c9d1d9;
   font-size: 0.95rem;
   line-height: 1.6;

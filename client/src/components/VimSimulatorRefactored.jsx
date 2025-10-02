@@ -5,9 +5,11 @@ import VimEditor from './VimEditor';
 import VimHeader from './VimHeader';
 import VimFooter from './VimFooter';
 import DebugPanel from './DebugPanel';
+import CompletionEffects from './CompletionEffects';
+import { shopItems } from '../data/shop';
 import './VimSimulator.css';
 
-function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLessons }) {
+function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLessons, editorStyle, completionEffect }) {
   const [state, dispatch] = useVimState(lesson.initialText);
   const [startTime, setStartTime] = useState(Date.now());
   const [completionTriggered, setCompletionTriggered] = useState(false);
@@ -19,6 +21,7 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
   const [waitingForReplaceChar, setWaitingForReplaceChar] = useState(false);
   const [waitingForMarkName, setWaitingForMarkName] = useState(false);
   const [waitingForJumpMark, setWaitingForJumpMark] = useState(false);
+  const [triggerEffect, setTriggerEffect] = useState(0);
 
   // Reset all state when lesson changes
   useEffect(() => {
@@ -123,10 +126,19 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
     }
 
     if (command === 'v') {
-      if (state.mode === 'visual') {
+      if (state.mode === 'visual' || state.mode === 'visual-line') {
         dispatch({ type: 'EXIT_TO_NORMAL' });
       } else {
         dispatch({ type: 'ENTER_VISUAL_MODE', payload: { ...state.cursorPos } });
+      }
+      return;
+    }
+
+    if (command === 'V') {
+      if (state.mode === 'visual-line') {
+        dispatch({ type: 'EXIT_TO_NORMAL' });
+      } else {
+        dispatch({ type: 'ENTER_VISUAL_LINE_MODE', payload: { ...state.cursorPos } });
       }
       return;
     }
@@ -205,7 +217,7 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
         showMessage(result.message, 2000);
       }
 
-      if (state.mode === 'visual') {
+      if (state.mode === 'visual' || state.mode === 'visual-line') {
         dispatch({ type: 'EXIT_TO_NORMAL' });
       }
       return;
@@ -267,7 +279,7 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
       dispatch({ type: 'SET_TEXT_LINES', payload: result.newLines });
       dispatch({ type: 'SET_CURSOR', payload: result.newCursorPos });
 
-      if (state.mode === 'visual') {
+      if (state.mode === 'visual' || state.mode === 'visual-line') {
         dispatch({ type: 'EXIT_TO_NORMAL' });
       }
 
@@ -316,6 +328,7 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
     if (result) {
       setCompletionTriggered(true);
       setCompletionData(result);
+      setTriggerEffect(prev => prev + 1); // Trigger completion effect
       showMessage('🎉 Lesson Complete!');
       // Save progress immediately without redirecting
       onComplete(result);
@@ -552,7 +565,7 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
       // Start multi-character commands (but not in visual mode)
       if (e.key === 'd') {
         // In visual mode, 'd' deletes the selection immediately
-        if (state.mode === 'visual') {
+        if (state.mode === 'visual' || state.mode === 'visual-line') {
           handleCommand('d');
           return;
         }
@@ -564,7 +577,7 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
 
       if (e.key === 'y') {
         // In visual mode, 'y' yanks the selection immediately
-        if (state.mode === 'visual') {
+        if (state.mode === 'visual' || state.mode === 'visual-line') {
           handleCommand('y');
           return;
         }
@@ -628,6 +641,7 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
         mode={state.mode}
         visualStart={state.visualStart}
         lesson={lesson}
+        editorStyle={editorStyle}
       />
 
       <VimFooter
@@ -658,6 +672,8 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
         commandHistory={state.commandHistory}
         errors={errors}
       />
+
+      <CompletionEffects effect={completionEffect} trigger={triggerEffect} />
     </div>
   );
 }

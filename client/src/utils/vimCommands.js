@@ -191,8 +191,23 @@ export function deleteText(textLines, cursorPos, command, visualStart = null, mo
   let newCursorPos = { ...cursorPos };
   let message = '';
 
-  if (command === 'd' && mode === 'visual' && visualStart) {
-    // Delete visual selection
+  if (command === 'd' && mode === 'visual-line' && visualStart) {
+    // Delete visual line selection (entire lines)
+    const startRow = Math.min(visualStart.row, cursorPos.row);
+    const endRow = Math.max(visualStart.row, cursorPos.row);
+    const lineCount = endRow - startRow + 1;
+
+    newLines.splice(startRow, lineCount);
+
+    if (newLines.length === 0) {
+      newLines.push('');
+    }
+
+    newCursorPos.row = Math.min(startRow, newLines.length - 1);
+    newCursorPos.col = 0;
+    message = `Deleted ${lineCount} line${lineCount > 1 ? 's' : ''}`;
+  } else if (command === 'd' && mode === 'visual' && visualStart) {
+    // Delete visual selection (character-wise)
     const start = Math.min(visualStart.col, cursorPos.col);
     const end = Math.max(visualStart.col, cursorPos.col);
     const line = newLines[cursorPos.row];

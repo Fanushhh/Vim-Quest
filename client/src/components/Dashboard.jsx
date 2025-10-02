@@ -2,8 +2,12 @@ import { useState, useEffect } from 'react';
 import LessonList from './LessonList';
 import VimSimulatorRefactored from './VimSimulatorRefactored';
 import Achievements from './Achievements';
+import Shop from './Shop';
+import Profile from './Profile';
 import { lessons, achievements as achievementList } from '../data/lessons';
+import { shopItems } from '../data/shop';
 import { API_URL } from '../config';
+import soundManager from '../utils/soundManager';
 import './Dashboard.css';
 
 function Dashboard({ username, token, onLogout }) {
@@ -11,12 +15,162 @@ function Dashboard({ username, token, onLogout }) {
   const [progress, setProgress] = useState([]);
   const [achievements, setAchievements] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('lessons'); // lessons, achievements
+  const [view, setView] = useState('lessons'); // lessons, achievements, shop, profile
+  const [sessionLessonsCompleted, setSessionLessonsCompleted] = useState(0);
+  const [purchasedItems, setPurchasedItems] = useState([]);
+  const [activeCustomizations, setActiveCustomizations] = useState({
+    theme: null,
+    editor_style: null,
+    badge_effect: null,
+    completion_effect: null,
+    sound_pack: null,
+    title: null
+  });
+  const [devMode, setDevMode] = useState(false);
+  const [devPoints, setDevPoints] = useState(0);
+  const [activeBoosters, setActiveBoosters] = useState({
+    doubleXP: null, // { expiresAt: timestamp }
+    extraHints: 0,
+    streakFreeze: 0
+  });
 
   useEffect(() => {
     fetchProgress();
     fetchAchievements();
+    loadPurchasedItems();
+    loadCustomizations();
+    loadBoosters();
   }, []);
+
+  const loadBoosters = () => {
+    const saved = localStorage.getItem(`boosters_${username}`);
+    if (saved) {
+      const boosters = JSON.parse(saved);
+      // Check if double XP expired
+      if (boosters.doubleXP && boosters.doubleXP.expiresAt < Date.now()) {
+        boosters.doubleXP = null;
+      }
+      setActiveBoosters(boosters);
+    }
+  };
+
+  const saveBoosters = (boosters) => {
+    localStorage.setItem(`boosters_${username}`, JSON.stringify(boosters));
+  };
+
+  // Apply theme when activeCustomizations.theme changes
+  useEffect(() => {
+    applyTheme(activeCustomizations.theme);
+  }, [activeCustomizations.theme]);
+
+  const loadPurchasedItems = () => {
+    const saved = localStorage.getItem(`purchased_items_${username}`);
+    if (saved) {
+      setPurchasedItems(JSON.parse(saved));
+    }
+  };
+
+  const loadCustomizations = () => {
+    const saved = localStorage.getItem(`customizations_${username}`);
+    if (saved) {
+      setActiveCustomizations(JSON.parse(saved));
+    }
+  };
+
+  const handleCustomizationChange = (type, itemId) => {
+    const newCustomizations = {
+      ...activeCustomizations,
+      [type]: itemId
+    };
+    setActiveCustomizations(newCustomizations);
+    localStorage.setItem(`customizations_${username}`, JSON.stringify(newCustomizations));
+  };
+
+  const applyTheme = (themeId) => {
+    const root = document.documentElement;
+
+    if (!themeId) {
+      // Reset to default theme
+      root.style.removeProperty('--theme-primary');
+      root.style.removeProperty('--theme-secondary');
+      root.style.removeProperty('--theme-accent');
+      root.style.removeProperty('--theme-background');
+      root.style.removeProperty('--theme-card-bg');
+      root.style.removeProperty('--theme-border');
+      root.style.removeProperty('--theme-hover-bg');
+      root.style.removeProperty('--theme-hover-border');
+      root.style.removeProperty('--theme-shadow');
+      root.style.removeProperty('--theme-gradient');
+      return;
+    }
+
+    const theme = shopItems.find(item => item.id === themeId);
+    if (theme && theme.preview) {
+      root.style.setProperty('--theme-primary', theme.preview.primary);
+      root.style.setProperty('--theme-secondary', theme.preview.secondary);
+      root.style.setProperty('--theme-accent', theme.preview.accent);
+      root.style.setProperty('--theme-background', theme.preview.background);
+      root.style.setProperty('--theme-card-bg', theme.preview.cardBg);
+      root.style.setProperty('--theme-border', theme.preview.border || '#30363d');
+      root.style.setProperty('--theme-hover-bg', theme.preview.hoverBg || theme.preview.primary);
+      root.style.setProperty('--theme-hover-border', theme.preview.hoverBorder || theme.preview.secondary);
+      root.style.setProperty('--theme-shadow', theme.preview.shadow || 'rgba(0, 0, 0, 0.3)');
+      root.style.setProperty('--theme-gradient', theme.preview.gradient || 'linear-gradient(135deg, #161b22 0%, #0d1117 100%)');
+    }
+  };
+
+  const handlePurchase = (itemId) => {
+    const item = shopItems.find(i => i.id === itemId);
+
+    // Handle boosters/consumables
+    if (item && item.consumable) {
+      if (itemId === 'special_double_xp') {
+        const expiresAt = Date.now() + (item.duration * 60 * 60 * 1000); // Convert hours to ms
+        const newBoosters = { ...activeBoosters, doubleXP: { expiresAt } };
+        setActiveBoosters(newBoosters);
+        saveBoosters(newBoosters);
+      } else if (itemId === 'special_hint_pack') {
+        const newBoosters = { ...activeBoosters, extraHints: activeBoosters.extraHints + item.quantity };
+        setActiveBoosters(newBoosters);
+        saveBoosters(newBoosters);
+      } else if (itemId === 'special_streak_freeze') {
+        const newBoosters = { ...activeBoosters, streakFreeze: activeBoosters.streakFreeze + item.quantity };
+        setActiveBoosters(newBoosters);
+        saveBoosters(newBoosters);
+      }
+      // Don't add consumables to purchased items (they're one-time use)
+    } else {
+      // Regular items (themes, titles, etc.)
+      const newPurchasedItems = [...purchasedItems, itemId];
+      setPurchasedItems(newPurchasedItems);
+      localStorage.setItem(`purchased_items_${username}`, JSON.stringify(newPurchasedItems));
+    }
+  };
+
+  const calculateTotalPoints = () => {
+    let earnedPoints = achievements.reduce((total, achievement) => {
+      const achievementData = achievementList.find(
+        a => a.type === achievement.achievement_type
+      );
+      return total + (achievementData?.points || 0);
+    }, 0);
+
+    // Apply double XP booster if active
+    if (activeBoosters.doubleXP && activeBoosters.doubleXP.expiresAt > Date.now()) {
+      earnedPoints *= 2;
+    }
+
+    // If dev mode is enabled, return a large number, otherwise return earned + dev points
+    return devMode ? 999999 : earnedPoints + devPoints;
+  };
+
+  const handleAddPoints = (amount) => {
+    setDevPoints(prev => prev + amount);
+  };
+
+  const handleToggleDevMode = () => {
+    setDevMode(prev => !prev);
+  };
 
   // Check for achievements when progress is loaded
   useEffect(() => {
@@ -107,10 +261,19 @@ function Dashboard({ username, token, onLogout }) {
     // Advanced complete (lessons 10-12)
     const advancedCount = completedLessons.filter(p => {
       const lessonId = p.lessonId || p.lesson_id;
-      return lessonId >= 10;
+      return lessonId >= 10 && lessonId <= 12;
     }).length;
     if (advancedCount === 3 && !achievements.find(a => a.achievement_type === 'advanced_complete')) {
       newAchievements.push('advanced_complete');
+    }
+
+    // Developer complete (lessons 13-18)
+    const developerCount = completedLessons.filter(p => {
+      const lessonId = p.lessonId || p.lesson_id;
+      return lessonId >= 13 && lessonId <= 18;
+    }).length;
+    if (developerCount === 6 && !achievements.find(a => a.achievement_type === 'developer_complete')) {
+      newAchievements.push('developer_complete');
     }
 
     // All complete
@@ -137,6 +300,7 @@ function Dashboard({ username, token, onLogout }) {
 
   const checkAchievements = async (progressData) => {
     const completedLessons = [...progress.filter(p => p.completed), progressData].filter(p => p.completed);
+    const allProgress = [...progress, progressData];
     const newAchievements = [];
 
     // First lesson
@@ -165,10 +329,19 @@ function Dashboard({ username, token, onLogout }) {
     // Advanced complete (lessons 10-12)
     const advancedCount = completedLessons.filter(p => {
       const lessonId = p.lessonId || p.lesson_id;
-      return lessonId >= 10;
+      return lessonId >= 10 && lessonId <= 12;
     }).length;
     if (advancedCount === 3 && !achievements.find(a => a.achievement_type === 'advanced_complete')) {
       newAchievements.push('advanced_complete');
+    }
+
+    // Developer complete (lessons 13-18)
+    const developerCount = completedLessons.filter(p => {
+      const lessonId = p.lessonId || p.lesson_id;
+      return lessonId >= 13 && lessonId <= 18;
+    }).length;
+    if (developerCount === 6 && !achievements.find(a => a.achievement_type === 'developer_complete')) {
+      newAchievements.push('developer_complete');
     }
 
     // All complete
@@ -181,9 +354,140 @@ function Dashboard({ username, token, onLogout }) {
       newAchievements.push('speed_demon');
     }
 
+    // Lightning fast (3 lessons under 30 seconds)
+    const fastLessons = allProgress.filter(p => p.timeTaken < 30 && p.completed).length;
+    if (fastLessons >= 3 && !achievements.find(a => a.achievement_type === 'lightning_fast')) {
+      newAchievements.push('lightning_fast');
+    }
+
     // Perfect score
-    if (progressData.mistakes === 0 && !achievements.find(a => a.achievement_type === 'perfect_score')) {
+    if (progressData.mistakes === 0 && progressData.completed && !achievements.find(a => a.achievement_type === 'perfect_score')) {
       newAchievements.push('perfect_score');
+    }
+
+    // Flawless five (5 lessons without mistakes)
+    const flawlessLessons = allProgress.filter(p => p.mistakes === 0 && p.completed).length;
+    if (flawlessLessons >= 5 && !achievements.find(a => a.achievement_type === 'flawless_five')) {
+      newAchievements.push('flawless_five');
+    }
+
+    // Efficient editor (90+ score)
+    if (progressData.score >= 90 && !achievements.find(a => a.achievement_type === 'efficient_editor')) {
+      newAchievements.push('efficient_editor');
+    }
+
+    // Speed and accuracy (under 30s with no mistakes)
+    if (progressData.timeTaken < 30 && progressData.mistakes === 0 && progressData.completed &&
+        !achievements.find(a => a.achievement_type === 'speed_and_accuracy')) {
+      newAchievements.push('speed_and_accuracy');
+    }
+
+    // Copy-Paste Pro (lesson 9 perfect score)
+    if ((progressData.lessonId === 9 || progressData.lesson_id === 9) &&
+        progressData.mistakes === 0 && progressData.completed &&
+        !achievements.find(a => a.achievement_type === 'copy_paste_pro')) {
+      newAchievements.push('copy_paste_pro');
+    }
+
+    // Time-based achievements
+    const currentHour = new Date().getHours();
+    if (currentHour < 8 && !achievements.find(a => a.achievement_type === 'early_bird')) {
+      newAchievements.push('early_bird');
+    }
+    if (currentHour >= 22 && !achievements.find(a => a.achievement_type === 'night_owl')) {
+      newAchievements.push('night_owl');
+    }
+
+    // Comeback kid (improved score by 20+)
+    const lessonId = progressData.lessonId || progressData.lesson_id;
+    const previousAttempt = progress.find(p => (p.lessonId || p.lesson_id) === lessonId);
+    if (previousAttempt && progressData.score > previousAttempt.score + 20 &&
+        !achievements.find(a => a.achievement_type === 'comeback_kid')) {
+      newAchievements.push('comeback_kid');
+    }
+
+    // Vim Sensei (90+ average score)
+    if (completedLessons.length >= 5) {
+      const avgScore = completedLessons.reduce((sum, p) => sum + (p.score || 0), 0) / completedLessons.length;
+      if (avgScore >= 90 && !achievements.find(a => a.achievement_type === 'vim_sensei')) {
+        newAchievements.push('vim_sensei');
+      }
+    }
+
+    // Movement Master (lessons 1-3 perfect)
+    const movementLessons = [1, 2, 3];
+    const movementPerfect = movementLessons.every(id =>
+      allProgress.find(p => (p.lessonId || p.lesson_id) === id && p.mistakes === 0 && p.completed)
+    );
+    if (movementPerfect && !achievements.find(a => a.achievement_type === 'movement_master')) {
+      newAchievements.push('movement_master');
+    }
+
+    // Deletion Expert (lessons 5, 6, 8 perfect)
+    const deletionLessons = [5, 6, 8];
+    const deletionPerfect = deletionLessons.every(id =>
+      allProgress.find(p => (p.lessonId || p.lesson_id) === id && p.mistakes === 0 && p.completed)
+    );
+    if (deletionPerfect && !achievements.find(a => a.achievement_type === 'deletion_expert')) {
+      newAchievements.push('deletion_expert');
+    }
+
+    // Search Specialist (lessons 7, 12 perfect)
+    const searchLessons = [7, 12];
+    const searchPerfect = searchLessons.every(id =>
+      allProgress.find(p => (p.lessonId || p.lesson_id) === id && p.mistakes === 0 && p.completed)
+    );
+    if (searchPerfect && !achievements.find(a => a.achievement_type === 'search_specialist')) {
+      newAchievements.push('search_specialist');
+    }
+
+    // Refactor Guru (lessons 14, 15, 18 perfect)
+    const refactorLessons = [14, 15, 18];
+    const refactorPerfect = refactorLessons.every(id =>
+      allProgress.find(p => (p.lessonId || p.lesson_id) === id && p.mistakes === 0 && p.completed)
+    );
+    if (refactorPerfect && !achievements.find(a => a.achievement_type === 'refactor_guru')) {
+      newAchievements.push('refactor_guru');
+    }
+
+    // Persistent (retry same lesson 3 times)
+    const lessonAttempts = allProgress.filter(p => (p.lessonId || p.lesson_id) === lessonId).length;
+    if (lessonAttempts >= 3 && !achievements.find(a => a.achievement_type === 'persistent')) {
+      newAchievements.push('persistent');
+    }
+
+    // Triple Perfect (3 consecutive perfect lessons)
+    // Check last 3 completed lessons
+    const recentCompleted = [...allProgress].filter(p => p.completed).sort((a, b) => {
+      const aTime = new Date(a.updated_at || a.createdAt || 0).getTime();
+      const bTime = new Date(b.updated_at || b.createdAt || 0).getTime();
+      return bTime - aTime;
+    }).slice(0, 3);
+    if (recentCompleted.length >= 3 && recentCompleted.every(p => p.mistakes === 0) &&
+        !achievements.find(a => a.achievement_type === 'triple_perfect')) {
+      newAchievements.push('triple_perfect');
+    }
+
+    // Marathon Runner (10 lessons in one session)
+    if (sessionLessonsCompleted + 1 >= 10 && !achievements.find(a => a.achievement_type === 'marathon_runner')) {
+      newAchievements.push('marathon_runner');
+    }
+
+    // Quick Learner (5 lessons in one day)
+    const today = new Date().toDateString();
+    const todayLessons = allProgress.filter(p => {
+      const lessonDate = new Date(p.updated_at || p.createdAt || 0).toDateString();
+      return lessonDate === today && p.completed;
+    }).length;
+    if (todayLessons >= 5 && !achievements.find(a => a.achievement_type === 'quick_learner')) {
+      newAchievements.push('quick_learner');
+    }
+
+    // Ultimate Champion (all other achievements)
+    const totalAchievements = achievementList.length;
+    if (achievements.length + newAchievements.filter(a => a !== 'ultimate_champion').length >= totalAchievements - 1 &&
+        !achievements.find(a => a.achievement_type === 'ultimate_champion')) {
+      newAchievements.push('ultimate_champion');
     }
 
     // Unlock new achievements
@@ -200,11 +504,16 @@ function Dashboard({ username, token, onLogout }) {
 
     if (newAchievements.length > 0) {
       await fetchAchievements();
+      // Play achievement sound
+      if (activeCustomizations.sound_pack) {
+        soundManager.playSoundForPack(activeCustomizations.sound_pack);
+      }
     }
   };
 
   const handleLessonComplete = (data) => {
     saveProgress(data);
+    setSessionLessonsCompleted(prev => prev + 1);
     // Don't redirect anymore - let user choose
   };
 
@@ -240,8 +549,27 @@ function Dashboard({ username, token, onLogout }) {
     <div className="dashboard">
       <header className="dashboard-header">
         <div className="header-left">
-          <h1>⌨️ VIM QUEST</h1>
-          <p className="welcome">Welcome, <strong>{username}</strong>!</p>
+          <h1>
+            ⌨️ VIM QUEST
+            {devMode && <span className="dev-mode-badge">DEV MODE</span>}
+            {activeBoosters.doubleXP && activeBoosters.doubleXP.expiresAt > Date.now() && (
+              <span className="booster-badge double-xp">⚡ 2X POINTS</span>
+            )}
+          </h1>
+          <div className="welcome">
+            <span>Welcome, <strong>{username}</strong>!</span>
+            {activeCustomizations.title && (
+              <span className="user-title">
+                {shopItems.find(i => i.id === activeCustomizations.title)?.title}
+              </span>
+            )}
+            {activeBoosters.extraHints > 0 && (
+              <span className="booster-info">💡 {activeBoosters.extraHints} extra hints</span>
+            )}
+            {activeBoosters.streakFreeze > 0 && (
+              <span className="booster-info">❄️ {activeBoosters.streakFreeze} streak freeze</span>
+            )}
+          </div>
         </div>
         <div className="header-right">
           <div className="stats">
@@ -272,6 +600,18 @@ function Dashboard({ username, token, onLogout }) {
           >
             🏆 Achievements
           </button>
+          <button
+            className={`nav-button ${view === 'shop' ? 'active' : ''}`}
+            onClick={() => setView('shop')}
+          >
+            🛍️ Shop
+          </button>
+          <button
+            className={`nav-button ${view === 'profile' ? 'active' : ''}`}
+            onClick={() => setView('profile')}
+          >
+            👤 Profile
+          </button>
         </nav>
       )}
 
@@ -299,6 +639,12 @@ function Dashboard({ username, token, onLogout }) {
               onComplete={handleLessonComplete}
               onNextLesson={handleNextLesson}
               onBackToLessons={handleBackToLessons}
+              editorStyle={activeCustomizations.editor_style}
+              completionEffect={
+                activeCustomizations.completion_effect
+                  ? shopItems.find(i => i.id === activeCustomizations.completion_effect)?.effect
+                  : null
+              }
             />
           </div>
         ) : view === 'lessons' ? (
@@ -307,10 +653,32 @@ function Dashboard({ username, token, onLogout }) {
             progress={progress}
             onStartLesson={handleStartLesson}
           />
-        ) : (
+        ) : view === 'achievements' ? (
           <Achievements
             achievements={achievements}
             achievementList={achievementList}
+            badgeEffect={
+              activeCustomizations.badge_effect
+                ? shopItems.find(i => i.id === activeCustomizations.badge_effect)?.effect
+                : null
+            }
+          />
+        ) : view === 'shop' ? (
+          <Shop
+            achievements={achievements}
+            purchasedItems={purchasedItems}
+            onPurchase={handlePurchase}
+            totalPoints={calculateTotalPoints()}
+          />
+        ) : (
+          <Profile
+            username={username}
+            purchasedItems={purchasedItems}
+            activeCustomizations={activeCustomizations}
+            onCustomizationChange={handleCustomizationChange}
+            onAddPoints={handleAddPoints}
+            devMode={devMode}
+            onToggleDevMode={handleToggleDevMode}
           />
         )}
       </main>

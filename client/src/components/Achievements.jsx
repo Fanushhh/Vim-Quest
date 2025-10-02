@@ -1,6 +1,6 @@
 import './Achievements.css';
 
-function Achievements({ achievements, achievementList }) {
+function Achievements({ achievements, achievementList, badgeEffect }) {
   const isUnlocked = (type) => {
     return achievements.some(a => a.achievement_type === type);
   };
@@ -27,10 +27,11 @@ function Achievements({ achievements, achievementList }) {
               key={achievement.type}
               className={`achievement-card ${unlocked ? 'unlocked' : 'locked'}`}
             >
-              <div className="achievement-icon">{achievement.icon}</div>
+              <div className={`achievement-icon ${unlocked && badgeEffect ? badgeEffect : ''}`}>{achievement.icon}</div>
               <div className="achievement-content">
                 <h3 className="achievement-title">{achievement.title}</h3>
                 <p className="achievement-description">{achievement.description}</p>
+                <p className="achievement-points">{achievement.points} points</p>
                 {unlocked && date && (
                   <p className="achievement-date">Unlocked: {date}</p>
                 )}

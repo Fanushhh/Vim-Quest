@@ -515,12 +515,43 @@ export const lessons = [
 ];
 
 export const achievements = [
-  { type: 'first_lesson', title: 'First Steps', description: 'Complete your first lesson', icon: '🎯' },
-  { type: 'beginner_complete', title: 'Vim Novice', description: 'Complete all beginner lessons', icon: '🌱' },
-  { type: 'intermediate_complete', title: 'Vim Apprentice', description: 'Complete all intermediate lessons', icon: '⚡' },
-  { type: 'advanced_complete', title: 'Vim Master', description: 'Complete all advanced lessons', icon: '🏆' },
-  { type: 'all_complete', title: 'Vim Legend', description: 'Complete all lessons', icon: '👑' },
-  { type: 'speed_demon', title: 'Speed Demon', description: 'Complete a lesson in under 30 seconds', icon: '🚀' },
-  { type: 'perfect_score', title: 'Perfectionist', description: 'Complete a lesson without mistakes', icon: '💎' },
-  { type: 'week_streak', title: 'Dedicated Learner', description: 'Practice for 7 days in a row', icon: '🔥' }
+  // Progression achievements (Easy - Medium)
+  { type: 'first_lesson', title: 'First Steps', description: 'Complete your first lesson', icon: '🎯', points: 10 },
+  { type: 'beginner_complete', title: 'Vim Novice', description: 'Complete all beginner lessons', icon: '🌱', points: 50 },
+  { type: 'intermediate_complete', title: 'Vim Apprentice', description: 'Complete all intermediate lessons', icon: '⚡', points: 100 },
+  { type: 'advanced_complete', title: 'Vim Master', description: 'Complete all advanced lessons', icon: '🏆', points: 150 },
+  { type: 'developer_complete', title: 'Code Ninja', description: 'Complete all developer lessons', icon: '💻', points: 200 },
+  { type: 'all_complete', title: 'Vim Legend', description: 'Complete all lessons', icon: '👑', points: 500 },
+
+  // Performance achievements (Medium)
+  { type: 'speed_demon', title: 'Speed Demon', description: 'Complete a lesson in under 30 seconds', icon: '🚀', points: 75 },
+  { type: 'lightning_fast', title: 'Lightning Fast', description: 'Complete 3 lessons under 30 seconds each', icon: '⚡', points: 200 },
+  { type: 'perfect_score', title: 'Perfectionist', description: 'Complete a lesson without mistakes', icon: '💎', points: 50 },
+  { type: 'flawless_five', title: 'Flawless Five', description: 'Complete 5 lessons without any mistakes', icon: '✨', points: 150 },
+  { type: 'efficient_editor', title: 'Efficient Editor', description: 'Complete a lesson with 90+ score', icon: '📈', points: 40 },
+
+  // Skill-based achievements (Medium - Hard)
+  { type: 'movement_master', title: 'Movement Master', description: 'Complete lessons 1-3 with perfect scores', icon: '🎮', points: 120 },
+  { type: 'deletion_expert', title: 'Deletion Expert', description: 'Complete lessons 5, 6, 8 with perfect scores', icon: '🗑️', points: 130 },
+  { type: 'search_specialist', title: 'Search Specialist', description: 'Complete lessons 7, 12 with perfect scores', icon: '🔍', points: 110 },
+  { type: 'copy_paste_pro', title: 'Copy-Paste Pro', description: 'Complete lesson 9 with perfect score', icon: '📋', points: 80 },
+  { type: 'refactor_guru', title: 'Refactoring Guru', description: 'Complete lessons 14, 15, 18 with perfect scores', icon: '🔧', points: 140 },
+
+  // Practice achievements (Medium - Very Hard)
+  { type: 'week_streak', title: 'Dedicated Learner', description: 'Practice for 7 days in a row', icon: '🔥', points: 100 },
+  { type: 'month_warrior', title: 'Month Warrior', description: 'Practice for 30 days in a row', icon: '💪', points: 500 },
+  { type: 'early_bird', title: 'Early Bird', description: 'Complete a lesson before 8 AM', icon: '🌅', points: 30 },
+  { type: 'night_owl', title: 'Night Owl', description: 'Complete a lesson after 10 PM', icon: '🦉', points: 30 },
+
+  // Challenge achievements (Medium - Hard)
+  { type: 'comeback_kid', title: 'Comeback Kid', description: 'Retry and improve your score by 20+ points', icon: '🔄', points: 60 },
+  { type: 'persistent', title: 'Persistent', description: 'Retry the same lesson 3 times', icon: '🎯', points: 50 },
+  { type: 'quick_learner', title: 'Quick Learner', description: 'Complete 5 lessons in one day', icon: '📚', points: 120 },
+  { type: 'marathon_runner', title: 'Marathon Runner', description: 'Complete 10 lessons in one session', icon: '🏃', points: 250 },
+
+  // Mastery achievements (Hard - Ultimate)
+  { type: 'triple_perfect', title: 'Triple Perfect', description: 'Get perfect score on 3 consecutive lessons', icon: '🌟', points: 180 },
+  { type: 'speed_and_accuracy', title: 'Speed & Accuracy', description: 'Complete lesson under 30s with no mistakes', icon: '💫', points: 150 },
+  { type: 'vim_sensei', title: 'Vim Sensei', description: 'Complete all lessons with 90+ average score', icon: '🥋', points: 300 },
+  { type: 'ultimate_champion', title: 'Ultimate Champion', description: 'Achieve all other achievements', icon: '🏅', points: 1000 }
 ];

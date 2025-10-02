@@ -62,6 +62,14 @@ function vimReducer(state, action) {
         message: '-- VISUAL --'
       };
 
+    case 'ENTER_VISUAL_LINE_MODE':
+      return {
+        ...state,
+        mode: 'visual-line',
+        visualStart: action.payload,
+        message: '-- VISUAL LINE --'
+      };
+
     case 'EXIT_TO_NORMAL':
       return {
         ...state,

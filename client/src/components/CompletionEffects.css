@@ -1,0 +1,133 @@
+.completion-effects {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  font-size: 2rem;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Fireworks Effect */
+.fireworks-particle {
+  animation: fireworks-burst forwards;
+}
+
+@keyframes fireworks-burst {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0);
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+    transform: translate(
+      calc((var(--random-x, 50) - 50) * 3px),
+      calc((var(--random-y, 50) - 50) * 3px)
+    ) scale(1.5);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(
+      calc((var(--random-x, 50) - 50) * 6px),
+      calc((var(--random-y, 50) - 50) * 6px)
+    ) scale(0);
+  }
+}
+
+/* Confetti Effect */
+.confetti-particle {
+  animation: confetti-fall forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-100%) rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(100vh) rotate(720deg);
+  }
+}
+
+/* Stars Effect */
+.stars-particle {
+  animation: stars-cascade forwards;
+}
+
+@keyframes stars-cascade {
+  0% {
+    opacity: 0;
+    transform: translateY(-100%) translateX(0) rotate(0deg) scale(0);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(20vh) translateX(0) rotate(180deg) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(100vh) translateX(calc((var(--random-x, 50) - 50) * 2px)) rotate(360deg) scale(0);
+  }
+}
+
+/* Enhanced animations with random variations */
+.fireworks .particle:nth-child(odd) {
+  --random-x: 70;
+  --random-y: 30;
+}
+
+.fireworks .particle:nth-child(even) {
+  --random-x: 30;
+  --random-y: 70;
+}
+
+.fireworks .particle:nth-child(3n) {
+  --random-x: 50;
+  --random-y: 80;
+}
+
+.stars .particle:nth-child(odd) {
+  --random-x: 60;
+}
+
+.stars .particle:nth-child(even) {
+  --random-x: 40;
+}
+
+.stars .particle:nth-child(3n) {
+  --random-x: 20;
+}
+
+.stars .particle:nth-child(4n) {
+  --random-x: 80;
+}
+
+/* Glow effects for certain particles */
+.particle {
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.8));
+}
+
+.fireworks-particle {
+  filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.9));
+}
+
+.stars-particle {
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 1));
+}
