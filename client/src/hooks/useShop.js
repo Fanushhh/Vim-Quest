@@ -19,7 +19,7 @@ export function useShop(token, achievements, activeBoosters, devMode = false, de
         setLoading(false);
       });
     }
-  }, [token, fetchData]);
+  }, [token]);
 
   const calculateTotalPoints = useCallback(() => {
     let earnedPoints = achievements.reduce((total, achievement) => {

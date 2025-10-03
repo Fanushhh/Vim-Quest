@@ -33,7 +33,7 @@ export function useProgress(token) {
       if (data) setProgress(data);
       setLoading(false);
     });
-  }, [fetchData]);
+  }, [token]);
 
   const saveProgress = useCallback(async (progressData) => {
     if (!token) return false;
@@ -55,7 +55,7 @@ export function useProgress(token) {
       console.error('Failed to save progress:', error);
       return false;
     }
-  }, [token, fetchData]);
+  }, [token]);
 
   const getProgress = useCallback((lessonId) => {
     return progress.find(p => (p.lessonId || p.lesson_id) === lessonId);
@@ -70,7 +70,7 @@ export function useProgress(token) {
     const data = await fetchData();
     if (data) setProgress(data);
     setLoading(false);
-  }, [fetchData]);
+  }, []);
 
   return { progress, loading, saveProgress, getProgress, isCompleted, refetch };
 }

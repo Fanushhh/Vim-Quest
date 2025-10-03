@@ -78,7 +78,7 @@ export function useFetch(url, token, options = {}) {
       setLoading(false);
       return null;
     }
-  }, [url, token, options]);
+  }, [url, token]);
 
   return { data, loading, error, execute, refetch: execute };
 }

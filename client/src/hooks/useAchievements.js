@@ -44,7 +44,7 @@ export function useAchievements(token, progress, sessionLessonsCompleted = 0, so
       if (data) setAchievements(data);
       setLoading(false);
     });
-  }, [fetchData]);
+  }, [token]);
 
   const unlockAchievement = useCallback(async (achievementType) => {
     if (!token) return false;
@@ -72,7 +72,7 @@ export function useAchievements(token, progress, sessionLessonsCompleted = 0, so
       console.error('Failed to unlock achievement:', error);
       return false;
     }
-  }, [token, fetchData, soundManager, activeSound]);
+  }, [token, soundManager, activeSound]);
 
   const checkExistingAchievements = useCallback(async () => {
     const completedLessons = progress.filter(p => p.completed);
@@ -336,7 +336,7 @@ export function useAchievements(token, progress, sessionLessonsCompleted = 0, so
     const data = await fetchData();
     if (data) setAchievements(data);
     setLoading(false);
-  }, [fetchData]);
+  }, []);
 
   return {
     achievements,
