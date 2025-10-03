@@ -6,7 +6,12 @@
       "Bash(node:*)",
       "Bash(npm install:*)",
       "Bash(pkill:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm start)",
+      "Bash(sqlite3:*)",
+      "Bash(mkdir:*)",
+      "Bash(netstat:*)",
+      "Bash(lsof:*)"
     ],
     "deny": [],
     "ask": []

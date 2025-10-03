@@ -1,12 +1,19 @@
 import { useState } from 'react';
+import { useAuthContext } from '../contexts/AuthContext';
+import { useShopContext } from '../contexts/ShopContext';
+import { useCustomizationContext } from '../contexts/CustomizationContext';
 import { shopItems } from '../data/shop';
 import soundManager from '../utils/soundManager';
 import './Profile.css';
 
-function Profile({ username, purchasedItems, activeCustomizations, onCustomizationChange, onAddPoints, devMode, onToggleDevMode }) {
+function Profile() {
+  const { username } = useAuthContext();
+  const { purchasedItems, devMode, setDevMode, addDevPoints } = useShopContext();
+  const { activeCustomizations, changeCustomization } = useCustomizationContext();
   const [activeTab, setActiveTab] = useState('theme');
 
   const getPurchasedItemsByType = (type) => {
+    if (!purchasedItems) return [];
     return shopItems.filter(item =>
       purchasedItems.includes(item.id) &&
       (Array.isArray(type) ? type.includes(item.type) : item.type === type)
@@ -21,15 +28,15 @@ function Profile({ username, purchasedItems, activeCustomizations, onCustomizati
   const titles = getPurchasedItemsByType('title');
 
   const isActive = (itemId, type) => {
-    return activeCustomizations[type] === itemId;
+    return activeCustomizations?.[type] === itemId;
   };
 
   const handleSelect = (itemId, type) => {
-    onCustomizationChange(type, itemId);
+    changeCustomization(type, itemId);
   };
 
   const handleTestSound = async () => {
-    if (activeCustomizations.sound_pack) {
+    if (activeCustomizations?.sound_pack) {
       await soundManager.ensureAudioContext();
       await soundManager.playSoundForPack(activeCustomizations.sound_pack);
     } else {
@@ -48,12 +55,12 @@ function Profile({ username, purchasedItems, activeCustomizations, onCustomizati
         <div className="customization-grid">
           {type === 'theme' && (
             <div
-              className={`customization-item ${!activeCustomizations.theme ? 'active' : ''}`}
+              className={`customization-item ${!activeCustomizations?.theme ? 'active' : ''}`}
               onClick={() => handleSelect(null, 'theme')}
             >
               <div className="item-icon">🌑</div>
               <div className="item-name">Default Theme</div>
-              {!activeCustomizations.theme && <div className="active-badge">✓ Active</div>}
+              {!activeCustomizations?.theme && <div className="active-badge">✓ Active</div>}
             </div>
           )}
           {items.map(item => (
@@ -88,9 +95,9 @@ function Profile({ username, purchasedItems, activeCustomizations, onCustomizati
           </div>
           <div className="profile-details">
             <h2 className="profile-username">{username}</h2>
-            {activeCustomizations.title && (
+            {activeCustomizations?.title && (
               <p className="profile-title">
-                {shopItems.find(i => i.id === activeCustomizations.title)?.title}
+                {shopItems.find(i => i.id === activeCustomizations?.title)?.title}
               </p>
             )}
           </div>
@@ -176,7 +183,7 @@ function Profile({ username, purchasedItems, activeCustomizations, onCustomizati
               'sound_pack',
               '🎵'
             )}
-            {activeCustomizations.sound_pack && (
+            {activeCustomizations?.sound_pack && (
               <div className="customization-section">
                 <h3 className="section-title">🎧 Test Sound</h3>
                 <div className="test-sound-container">
@@ -220,7 +227,7 @@ function Profile({ username, purchasedItems, activeCustomizations, onCustomizati
                   </div>
                   <button
                     className={`dev-toggle-btn ${devMode ? 'active' : ''}`}
-                    onClick={onToggleDevMode}
+                    onClick={() => setDevMode(!devMode)}
                   >
                     {devMode ? '✓ Enabled' : 'Disabled'}
                   </button>
@@ -236,25 +243,25 @@ function Profile({ username, purchasedItems, activeCustomizations, onCustomizati
                   <div className="point-buttons">
                     <button
                       className="add-points-btn small"
-                      onClick={() => onAddPoints(100)}
+                      onClick={() => addDevPoints(100)}
                     >
                       +100
                     </button>
                     <button
                       className="add-points-btn medium"
-                      onClick={() => onAddPoints(500)}
+                      onClick={() => addDevPoints(500)}
                     >
                       +500
                     </button>
                     <button
                       className="add-points-btn large"
-                      onClick={() => onAddPoints(1000)}
+                      onClick={() => addDevPoints(1000)}
                     >
                       +1000
                     </button>
                     <button
                       className="add-points-btn mega"
-                      onClick={() => onAddPoints(5000)}
+                      onClick={() => addDevPoints(5000)}
                     >
                       +5000
                     </button>

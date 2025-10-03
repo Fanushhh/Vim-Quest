@@ -1,30 +1,12 @@
 import { useState } from 'react';
+import { useShopContext } from '../contexts/ShopContext';
 import { shopItems, shopCategories } from '../data/shop';
 import './Shop.css';
 
-function Shop({ achievements, purchasedItems, onPurchase, totalPoints }) {
+function Shop() {
+  const { purchasedItems, currentPoints, handlePurchase, canAfford, hasPurchased } = useShopContext();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedItem, setSelectedItem] = useState(null);
-
-  const calculateTotalPoints = () => {
-    return achievements.reduce((total, achievement) => {
-      const achievementData = require('../data/lessons').achievements.find(
-        a => a.type === achievement.achievement_type
-      );
-      return total + (achievementData?.points || 0);
-    }, 0);
-  };
-
-  const calculateSpentPoints = () => {
-    return purchasedItems.reduce((total, itemId) => {
-      const item = shopItems.find(i => i.id === itemId);
-      return total + (item?.cost || 0);
-    }, 0);
-  };
-
-  const availablePoints = totalPoints || calculateTotalPoints();
-  const spentPoints = calculateSpentPoints();
-  const currentPoints = availablePoints - spentPoints;
 
   const filteredItems = shopItems.filter(item => {
     if (selectedCategory === 'all') return true;
@@ -45,17 +27,9 @@ function Shop({ achievements, purchasedItems, onPurchase, totalPoints }) {
     return item.type === allowedTypes;
   });
 
-  const isPurchased = (itemId) => {
-    return purchasedItems.includes(itemId);
-  };
-
-  const canAfford = (item) => {
-    return currentPoints >= item.cost;
-  };
-
-  const handlePurchase = (item) => {
-    if (canAfford(item) && !isPurchased(item.id)) {
-      onPurchase(item.id);
+  const handlePurchaseClick = (item) => {
+    if (canAfford(item.cost) && !hasPurchased(item.id)) {
+      handlePurchase(item.id, item);
       setSelectedItem(null);
     }
   };
@@ -68,10 +42,6 @@ function Shop({ achievements, purchasedItems, onPurchase, totalPoints }) {
           <div className="points-section">
             <span className="points-label">Available Points:</span>
             <span className="points-value">{currentPoints}</span>
-          </div>
-          <div className="points-breakdown">
-            <span className="points-earned">Earned: {availablePoints}</span>
-            <span className="points-spent">Spent: {spentPoints}</span>
           </div>
         </div>
       </div>
@@ -96,8 +66,8 @@ function Shop({ achievements, purchasedItems, onPurchase, totalPoints }) {
 
       <div className="shop-items-grid">
         {filteredItems.map(item => {
-          const purchased = isPurchased(item.id);
-          const affordable = canAfford(item);
+          const purchased = hasPurchased(item.id);
+          const affordable = canAfford(item.cost);
 
           return (
             <div
@@ -149,12 +119,12 @@ function Shop({ achievements, purchasedItems, onPurchase, totalPoints }) {
 
             <div className="modal-footer">
               <div className="modal-cost">{selectedItem.cost} Points</div>
-              {isPurchased(selectedItem.id) ? (
+              {hasPurchased(selectedItem.id) ? (
                 <button className="purchase-btn owned" disabled>Already Owned</button>
-              ) : canAfford(selectedItem) ? (
+              ) : canAfford(selectedItem.cost) ? (
                 <button
                   className="purchase-btn available"
-                  onClick={() => handlePurchase(selectedItem)}
+                  onClick={() => handlePurchaseClick(selectedItem)}
                 >
                   Purchase
                 </button>

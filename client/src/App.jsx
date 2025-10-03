@@ -1,34 +1,37 @@
-import { useState, useEffect } from 'react';
+import React from 'react';
+import { AuthProvider, useAuthContext } from './contexts/AuthContext';
+import { GameStateProvider } from './contexts/GameStateContext';
+import { CustomizationProvider } from './contexts/CustomizationContext';
+import { ShopProvider } from './contexts/ShopContext';
 import Auth from './components/Auth';
-import Dashboard from './components/Dashboard';
+import DashboardRefactored from './components/DashboardRefactored';
 import './App.css';
 
-function App() {
-  const [token, setToken] = useState(localStorage.getItem('token'));
-  const [username, setUsername] = useState(localStorage.getItem('username'));
-
-  const handleLogin = (newToken, newUsername) => {
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('username', newUsername);
-    setToken(newToken);
-    setUsername(newUsername);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    setToken(null);
-    setUsername(null);
-  };
+function AppContent() {
+  const { isAuthenticated } = useAuthContext();
 
   return (
     <div className="App">
-      {!token ? (
-        <Auth onLogin={handleLogin} />
+      {!isAuthenticated ? (
+        <Auth />
       ) : (
-        <Dashboard username={username} token={token} onLogout={handleLogout} />
+        <GameStateProvider>
+          <CustomizationProvider>
+            <ShopProvider>
+              <DashboardRefactored />
+            </ShopProvider>
+          </CustomizationProvider>
+        </GameStateProvider>
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

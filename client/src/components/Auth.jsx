@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useAuthContext } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import './Auth.css';
 
-function Auth({ onLogin }) {
+function Auth() {
+  const { login } = useAuthContext();
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -25,7 +27,7 @@ function Auth({ onLogin }) {
       const data = await response.json();
 
       if (response.ok) {
-        onLogin(data.token, data.username);
+        login(data.token, data.username);
       } else {
         setError(data.error || 'Something went wrong');
       }

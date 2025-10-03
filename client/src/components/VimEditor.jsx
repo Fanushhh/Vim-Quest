@@ -26,6 +26,80 @@ function VimEditor({ textLines, cursorPos, mode, visualStart, lesson, editorStyl
     return style?.style?.scanlines || false;
   };
 
+  const getSyntaxHighlighting = () => {
+    if (!editorStyle) return null;
+    const style = shopItems.find(item => item.id === editorStyle);
+    if (style?.style?.colorScheme === 'rainbow') {
+      return {
+        colors: style.style.bracketColors || ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffa07a', '#98d8c8'],
+        enabled: true
+      };
+    }
+    return null;
+  };
+
+  const highlightSyntax = (char, colIdx, line) => {
+    const syntaxConfig = getSyntaxHighlighting();
+    if (!syntaxConfig || !syntaxConfig.enabled) return {};
+
+    // Keywords to highlight
+    const keywords = ['function', 'const', 'let', 'var', 'if', 'else', 'for', 'while', 'return', 'class', 'new', 'this', 'import', 'export', 'from', 'async', 'await'];
+    const word = getWordAtPosition(line, colIdx);
+
+    if (keywords.includes(word)) {
+      return { color: '#569cd6' }; // Blue for keywords
+    }
+
+    // Strings
+    if (char === '"' || char === "'" || char === '`') {
+      return { color: '#ce9178' }; // Orange for strings
+    }
+
+    // Numbers
+    if (/\d/.test(char)) {
+      return { color: '#b5cea8' }; // Green for numbers
+    }
+
+    // Brackets with rainbow colors
+    const brackets = ['(', ')', '[', ']', '{', '}'];
+    if (brackets.includes(char)) {
+      const depth = getBracketDepth(line, colIdx);
+      const colorIndex = depth % syntaxConfig.colors.length;
+      return { color: syntaxConfig.colors[colorIndex] };
+    }
+
+    // Comments
+    if (char === '/' && colIdx < line.length - 1 && line[colIdx + 1] === '/') {
+      return { color: '#6a9955' }; // Green for comments
+    }
+
+    return {};
+  };
+
+  const getWordAtPosition = (line, colIdx) => {
+    let start = colIdx;
+    let end = colIdx;
+
+    // Find word boundaries
+    while (start > 0 && /[a-zA-Z]/.test(line[start - 1])) start--;
+    while (end < line.length && /[a-zA-Z]/.test(line[end])) end++;
+
+    return line.slice(start, end);
+  };
+
+  const getBracketDepth = (line, colIdx) => {
+    let depth = 0;
+    const openBrackets = ['(', '[', '{'];
+    const closeBrackets = [')', ']', '}'];
+
+    for (let i = 0; i < colIdx; i++) {
+      if (openBrackets.includes(line[i])) depth++;
+      if (closeBrackets.includes(line[i])) depth--;
+    }
+
+    return Math.max(0, depth);
+  };
+
   const cursorColor = getCursorColor();
   const scanlines = hasScanlines();
 
@@ -54,11 +128,16 @@ function VimEditor({ textLines, cursorPos, mode, visualStart, lesson, editorStyl
 
               const isSelected = isVisualCharSelected || isVisualLineSelected;
 
+              const syntaxStyle = highlightSyntax(char, colIdx, line);
+              const charStyle = isCursor && cursorColor
+                ? { background: cursorColor, ...syntaxStyle }
+                : syntaxStyle;
+
               return (
                 <span
                   key={colIdx}
                   className={`char ${isCursor ? 'cursor' : ''} ${isTarget ? 'target' : ''} ${isSelected ? 'selected' : ''}`}
-                  style={isCursor && cursorColor ? { background: cursorColor } : undefined}
+                  style={charStyle}
                 >
                   {char === ' ' ? '\u00A0' : char}
                 </span>

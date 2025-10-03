@@ -22,6 +22,8 @@ db.exec(`
     lesson_id INTEGER NOT NULL,
     completed BOOLEAN DEFAULT 0,
     score INTEGER DEFAULT 0,
+    time_taken INTEGER,
+    mistakes INTEGER DEFAULT 0,
     completed_at DATETIME,
     FOREIGN KEY (user_id) REFERENCES users(id),
     UNIQUE(user_id, lesson_id)
@@ -94,6 +96,47 @@ db.exec(`
     last_activity_date DATE,
     streak_freeze_count INTEGER DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS leaderboard_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    username TEXT NOT NULL,
+    total_score INTEGER DEFAULT 0,
+    total_lessons_completed INTEGER DEFAULT 0,
+    average_score REAL DEFAULT 0,
+    total_achievements INTEGER DEFAULT 0,
+    fastest_lesson_time INTEGER,
+    perfect_lessons INTEGER DEFAULT 0,
+    current_streak INTEGER DEFAULT 0,
+    last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS weekly_leaderboard (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    username TEXT NOT NULL,
+    week_start DATE NOT NULL,
+    weekly_score INTEGER DEFAULT 0,
+    weekly_lessons INTEGER DEFAULT 0,
+    weekly_achievements INTEGER DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(user_id, week_start)
+  );
+
+  CREATE TABLE IF NOT EXISTS lesson_leaderboard (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    username TEXT NOT NULL,
+    lesson_id INTEGER NOT NULL,
+    best_time INTEGER NOT NULL,
+    best_score INTEGER NOT NULL,
+    attempts INTEGER DEFAULT 1,
+    last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE(user_id, lesson_id)
   );
 `);
 

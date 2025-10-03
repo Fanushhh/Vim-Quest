@@ -131,11 +131,11 @@ export const lessons = [
     difficulty: "intermediate",
     instructions: "Use visual mode to select and delete multiple words and selections",
     initialText: [
-      "Remove the word DELETE from this line",
-      "Select and delete THESE WORDS carefully here",
+      "Remove the word DELETE from this line ",
+      "Select and delete THESE WORDS carefully here ",
       "Keep this line intact",
-      "Remove MULTIPLE WORDS HERE from this sentence",
-      "Practice visual selection DELETE THIS TOO"
+      "Remove MULTIPLE WORDS HERE from this sentence ",
+      "Practice visual selection DELETE THIS TOO "
     ],
     task: "delete",
     targetState: [

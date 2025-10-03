@@ -115,19 +115,35 @@ app.get('/api/progress', authenticateToken, (req, res) => {
 // Save lesson progress
 app.post('/api/progress', authenticateToken, (req, res) => {
   try {
-    const { lessonId, completed, score } = req.body;
+    const { lessonId, completed, score, timeTaken, mistakes } = req.body;
 
     const stmt = db.prepare(`
-      INSERT INTO progress (user_id, lesson_id, completed, score, completed_at)
-      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO progress (user_id, lesson_id, completed, score, time_taken, mistakes, completed_at)
+      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(user_id, lesson_id)
-      DO UPDATE SET completed = ?, score = ?, completed_at = CURRENT_TIMESTAMP
+      DO UPDATE SET completed = ?, score = ?, time_taken = ?, mistakes = ?, completed_at = CURRENT_TIMESTAMP
     `);
 
-    stmt.run(req.user.id, lessonId, completed ? 1 : 0, score, completed ? 1 : 0, score);
+    stmt.run(
+      req.user.id, lessonId, completed ? 1 : 0, score, timeTaken, mistakes,
+      completed ? 1 : 0, score, timeTaken, mistakes
+    );
+
+    // Update leaderboard and streak if lesson is completed
+    if (completed) {
+      updateLeaderboard(req.user.id, req.user.username, {
+        lessonId,
+        score,
+        timeTaken,
+        mistakes
+      });
+      updateUserStreak(req.user.id);
+    }
+
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    console.error('Error saving progress:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
   }
 });
 
@@ -305,11 +321,24 @@ app.get('/api/daily-challenge', authenticateToken, (req, res) => {
     `);
     const completion = completionStmt.get(req.user.id, challenge.id);
 
+    // For three_lessons challenge, count lessons completed today
+    let lessonsCompletedToday = 0;
+    if (challenge.challenge_type === 'three_lessons') {
+      const lessonCountStmt = db.prepare(`
+        SELECT COUNT(DISTINCT lesson_id) as count
+        FROM progress
+        WHERE user_id = ? AND DATE(completed_at) = ? AND completed = 1
+      `);
+      const result = lessonCountStmt.get(req.user.id, today);
+      lessonsCompletedToday = result?.count || 0;
+    }
+
     res.json({
       ...challenge,
       challenge_data: JSON.parse(challenge.challenge_data),
       completed: !!completion,
-      completion: completion || null
+      completion: completion || null,
+      lessonsCompletedToday
     });
   } catch (error) {
     console.error('Error fetching daily challenge:', error);
@@ -453,6 +482,239 @@ app.post('/api/streak/freeze', authenticateToken, (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error adding streak freeze:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update leaderboard (called after lesson completion)
+function updateLeaderboard(userId, username, lessonData) {
+  try {
+    // Get user's current progress
+    const progressStmt = db.prepare('SELECT * FROM progress WHERE user_id = ? AND completed = 1');
+    const userProgress = progressStmt.all(userId);
+
+    const totalLessonsCompleted = userProgress.length;
+    const totalScore = userProgress.reduce((sum, p) => sum + (p.score || 0), 0);
+    const averageScore = totalLessonsCompleted > 0 ? totalScore / totalLessonsCompleted : 0;
+    const perfectLessons = userProgress.filter(p => p.mistakes === 0).length;
+    const fastestTime = Math.min(...userProgress.map(p => p.time_taken || Infinity).filter(t => t !== Infinity), Infinity);
+
+    // Get achievements count
+    const achievementStmt = db.prepare('SELECT COUNT(*) as count FROM achievements WHERE user_id = ?');
+    const achievementCount = achievementStmt.get(userId).count;
+
+    // Get current streak
+    const streakStmt = db.prepare('SELECT current_streak FROM user_streaks WHERE user_id = ?');
+    const streak = streakStmt.get(userId);
+    const currentStreak = streak?.current_streak || 0;
+
+    // Update main leaderboard
+    const updateStmt = db.prepare(`
+      INSERT INTO leaderboard_entries (
+        user_id, username, total_score, total_lessons_completed,
+        average_score, total_achievements, fastest_lesson_time,
+        perfect_lessons, current_streak, last_updated
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id) DO UPDATE SET
+        username = excluded.username,
+        total_score = excluded.total_score,
+        total_lessons_completed = excluded.total_lessons_completed,
+        average_score = excluded.average_score,
+        total_achievements = excluded.total_achievements,
+        fastest_lesson_time = excluded.fastest_lesson_time,
+        perfect_lessons = excluded.perfect_lessons,
+        current_streak = excluded.current_streak,
+        last_updated = CURRENT_TIMESTAMP
+    `);
+
+    updateStmt.run(
+      userId, username, totalScore, totalLessonsCompleted,
+      averageScore, achievementCount, fastestTime === Infinity ? null : fastestTime,
+      perfectLessons, currentStreak
+    );
+
+    // Update weekly leaderboard
+    const weekStart = getWeekStart();
+    const weeklyStmt = db.prepare(`
+      INSERT INTO weekly_leaderboard (user_id, username, week_start, weekly_score, weekly_lessons, weekly_achievements)
+      VALUES (?, ?, ?, ?, 1, 0)
+      ON CONFLICT(user_id, week_start) DO UPDATE SET
+        weekly_score = weekly_score + ?,
+        weekly_lessons = weekly_lessons + 1
+    `);
+
+    weeklyStmt.run(userId, username, weekStart, lessonData.score || 0, lessonData.score || 0);
+
+    // Update lesson-specific leaderboard
+    if (lessonData.lessonId) {
+      const lessonStmt = db.prepare(`
+        INSERT INTO lesson_leaderboard (user_id, username, lesson_id, best_time, best_score, attempts, last_updated)
+        VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_id, lesson_id) DO UPDATE SET
+          best_time = CASE WHEN excluded.best_time < best_time THEN excluded.best_time ELSE best_time END,
+          best_score = CASE WHEN excluded.best_score > best_score THEN excluded.best_score ELSE best_score END,
+          attempts = attempts + 1,
+          last_updated = CURRENT_TIMESTAMP
+      `);
+
+      lessonStmt.run(userId, username, lessonData.lessonId, lessonData.timeTaken || 0, lessonData.score || 0);
+    }
+  } catch (error) {
+    console.error('Error updating leaderboard:', error);
+  }
+}
+
+// Helper function to get week start date (Monday)
+function getWeekStart() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+  const monday = new Date(now.setDate(diff));
+  return monday.toISOString().split('T')[0];
+}
+
+// Get global leaderboard
+app.get('/api/leaderboard/global', (req, res) => {
+  try {
+    const { sortBy = 'total_score', limit = 100 } = req.query;
+
+    const validSortFields = ['total_score', 'average_score', 'total_achievements', 'fastest_lesson_time', 'perfect_lessons', 'current_streak'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'total_score';
+
+    const stmt = db.prepare(`
+      SELECT
+        user_id, username, total_score, total_lessons_completed,
+        average_score, total_achievements, fastest_lesson_time,
+        perfect_lessons, current_streak, last_updated
+      FROM leaderboard_entries
+      ORDER BY ${sortField} DESC, total_score DESC
+      LIMIT ?
+    `);
+
+    const leaderboard = stmt.all(limit);
+
+    // Add rank
+    const rankedLeaderboard = leaderboard.map((entry, index) => ({
+      ...entry,
+      rank: index + 1
+    }));
+
+    res.json(rankedLeaderboard);
+  } catch (error) {
+    console.error('Error fetching global leaderboard:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get weekly leaderboard
+app.get('/api/leaderboard/weekly', (req, res) => {
+  try {
+    const { limit = 100 } = req.query;
+    const weekStart = getWeekStart();
+
+    const stmt = db.prepare(`
+      SELECT
+        user_id, username, weekly_score, weekly_lessons, weekly_achievements
+      FROM weekly_leaderboard
+      WHERE week_start = ?
+      ORDER BY weekly_score DESC, weekly_lessons DESC
+      LIMIT ?
+    `);
+
+    const leaderboard = stmt.all(weekStart, limit);
+
+    // Add rank
+    const rankedLeaderboard = leaderboard.map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
+      week_start: weekStart
+    }));
+
+    res.json(rankedLeaderboard);
+  } catch (error) {
+    console.error('Error fetching weekly leaderboard:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get lesson-specific leaderboard
+app.get('/api/leaderboard/lesson/:lessonId', (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const { sortBy = 'best_time', limit = 100 } = req.query;
+
+    const sortField = sortBy === 'best_score' ? 'best_score DESC' : 'best_time ASC';
+
+    const stmt = db.prepare(`
+      SELECT
+        user_id, username, lesson_id, best_time, best_score, attempts, last_updated
+      FROM lesson_leaderboard
+      WHERE lesson_id = ?
+      ORDER BY ${sortField}
+      LIMIT ?
+    `);
+
+    const leaderboard = stmt.all(lessonId, limit);
+
+    // Add rank
+    const rankedLeaderboard = leaderboard.map((entry, index) => ({
+      ...entry,
+      rank: index + 1
+    }));
+
+    res.json(rankedLeaderboard);
+  } catch (error) {
+    console.error('Error fetching lesson leaderboard:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get user's rank and position
+app.get('/api/leaderboard/rank', authenticateToken, (req, res) => {
+  try {
+    const { type = 'global' } = req.query;
+
+    if (type === 'weekly') {
+      const weekStart = getWeekStart();
+      const stmt = db.prepare(`
+        SELECT COUNT(*) + 1 as rank
+        FROM weekly_leaderboard
+        WHERE week_start = ? AND weekly_score > (
+          SELECT weekly_score FROM weekly_leaderboard
+          WHERE user_id = ? AND week_start = ?
+        )
+      `);
+
+      const result = stmt.get(weekStart, req.user.id, weekStart);
+
+      const userStmt = db.prepare(`
+        SELECT * FROM weekly_leaderboard
+        WHERE user_id = ? AND week_start = ?
+      `);
+      const userData = userStmt.get(req.user.id, weekStart);
+
+      res.json({ rank: result?.rank || null, ...userData });
+    } else {
+      const stmt = db.prepare(`
+        SELECT COUNT(*) + 1 as rank
+        FROM leaderboard_entries
+        WHERE total_score > (
+          SELECT total_score FROM leaderboard_entries WHERE user_id = ?
+        )
+      `);
+
+      const result = stmt.get(req.user.id);
+
+      const userStmt = db.prepare(`
+        SELECT * FROM leaderboard_entries WHERE user_id = ?
+      `);
+      const userData = userStmt.get(req.user.id);
+
+      res.json({ rank: result?.rank || null, ...userData });
+    }
+  } catch (error) {
+    console.error('Error fetching user rank:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });

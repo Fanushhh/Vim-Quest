@@ -1,37 +1,17 @@
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useImperativeHandle } from 'react';
+import { useAuthContext } from '../contexts/AuthContext';
+import { useGameState } from '../contexts/GameStateContext';
 import './StreakCompact.css';
 
-const StreakCompact = forwardRef(({ token }, ref) => {
-  const [streak, setStreak] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    console.log('StreakCompact component mounted!');
-    fetchStreak();
-  }, []);
+const StreakCompact = forwardRef((props, ref) => {
+  const { token } = useAuthContext();
+  const { streak: streakHook } = useGameState();
+  const { streak, loading, refetch } = streakHook;
 
   // Expose refreshStreak to parent via ref
   useImperativeHandle(ref, () => ({
-    refreshStreak: fetchStreak
+    refreshStreak: refetch
   }));
-
-  const fetchStreak = async () => {
-    try {
-      console.log('Fetching streak...');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/streak`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await response.json();
-      console.log('Streak data:', data);
-      setStreak(data);
-      setLoading(false);
-    } catch (error) {
-      console.error('Failed to fetch streak:', error);
-      setLoading(false);
-    }
-  };
 
   if (loading || !streak) {
     return null;

@@ -209,13 +209,15 @@ export function deleteText(textLines, cursorPos, command, visualStart = null, mo
   } else if (command === 'd' && mode === 'visual' && visualStart) {
     // Delete visual selection (character-wise)
     const start = Math.min(visualStart.col, cursorPos.col);
-    const end = Math.max(visualStart.col, cursorPos.col);
+    let end = Math.max(visualStart.col, cursorPos.col);
     const line = newLines[cursorPos.row];
 
     if (line && visualStart.row === cursorPos.row) {
-      // Visual mode delete: from start to end inclusive
-      // In Vim, visual selection includes the character under the cursor
-      const newLine = line.slice(0, start) + line.slice(end + 1);
+      // Visual mode delete: from start up to (but not including) end position
+      // This matches Vim's behavior where the selection is start-inclusive, end-exclusive
+      // Exception: if we're selecting backwards or just one character, include end
+      const deleteEnd = end > start ? end : end + 1;
+      const newLine = line.slice(0, start) + line.slice(deleteEnd);
       newLines[cursorPos.row] = newLine;
       // Ensure cursor doesn't exceed new line length
       newCursorPos.col = Math.min(start, Math.max(0, newLine.length - 1));
@@ -358,7 +360,9 @@ export function yankText(textLines, cursorPos, command, visualStart = null, mode
       const line = textLines[cursorPos.row];
       const start = Math.min(visualStart.col, cursorPos.col);
       const end = Math.max(visualStart.col, cursorPos.col);
-      yankedContent = line.slice(start, end + 1);
+      // Yank from start up to (but not including) end position
+      const yankEnd = end > start ? end : end + 1;
+      yankedContent = line.slice(start, yankEnd);
       registerType = 'char';
     }
   }
@@ -515,7 +519,9 @@ export function checkTaskCompletion(lesson, textLines, cursorPos, startTime, mis
 
   // Delete task completion
   if (lesson.task === 'delete' && lesson.targetState) {
-    const currentState = textLines.filter(line => line.trim() !== '');
+    const currentState = textLines
+      .filter(line => line.trim() !== '')
+      .map(line => line.trimEnd()); // Remove trailing spaces for comparison
     const targetState = lesson.targetState;
     if (JSON.stringify(currentState) === JSON.stringify(targetState)) {
       return createCompletionResult(lesson.id, startTime, mistakes);

@@ -633,6 +633,10 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
 
   return (
     <div className="vim-simulator">
+      <button className="back-to-lessons-btn" onClick={onBackToLessons}>
+        ← Back to Lessons
+      </button>
+
       <VimHeader mode={state.mode} mistakes={state.mistakes} cursorPos={state.cursorPos} />
 
       <VimEditor

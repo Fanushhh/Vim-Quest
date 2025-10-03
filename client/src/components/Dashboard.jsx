@@ -4,6 +4,7 @@ import VimSimulatorRefactored from './VimSimulatorRefactored';
 import Achievements from './Achievements';
 import Shop from './Shop';
 import Profile from './Profile';
+import Leaderboard from './Leaderboard';
 import DailyChallengeCompact from './DailyChallengeCompact';
 import StreakCompact from './StreakCompact';
 import { lessons, achievements as achievementList } from '../data/lessons';
@@ -17,7 +18,7 @@ function Dashboard({ username, token, onLogout }) {
   const [progress, setProgress] = useState([]);
   const [achievements, setAchievements] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('lessons'); // lessons, achievements, shop, profile
+  const [view, setView] = useState('lessons'); // lessons, achievements, shop, profile, leaderboard
   const [sessionLessonsCompleted, setSessionLessonsCompleted] = useState(0);
   const [purchasedItems, setPurchasedItems] = useState([]);
   const [activeCustomizations, setActiveCustomizations] = useState({
@@ -728,10 +729,16 @@ function Dashboard({ username, token, onLogout }) {
             📚 Lessons
           </button>
           <button
+            className={`nav-button ${view === 'leaderboard' ? 'active' : ''}`}
+            onClick={() => setView('leaderboard')}
+          >
+            🏆 Leaderboard
+          </button>
+          <button
             className={`nav-button ${view === 'achievements' ? 'active' : ''}`}
             onClick={() => setView('achievements')}
           >
-            🏆 Achievements
+            🎖️ Achievements
           </button>
           <button
             className={`nav-button ${view === 'shop' ? 'active' : ''}`}
@@ -785,6 +792,11 @@ function Dashboard({ username, token, onLogout }) {
             lessons={lessons}
             progress={progress}
             onStartLesson={handleStartLesson}
+          />
+        ) : view === 'leaderboard' ? (
+          <Leaderboard
+            token={token}
+            username={username}
           />
         ) : view === 'achievements' ? (
           <Achievements

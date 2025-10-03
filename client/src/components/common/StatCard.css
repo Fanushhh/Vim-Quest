@@ -1,0 +1,33 @@
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  transition: border-color 0.2s;
+}
+
+.stat-card:hover {
+  border-color: #00ff00;
+}
+
+.stat-icon {
+  font-size: 1.5rem;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.stat-value {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
