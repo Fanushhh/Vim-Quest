@@ -35,6 +35,33 @@
   margin-bottom: 15px;
 }
 
+.vim-objective-top {
+  margin-bottom: 15px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.12) 0%, rgba(251, 191, 36, 0.06) 100%);
+  border: 2px solid rgba(251, 191, 36, 0.4);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.15);
+}
+
+.vim-objective-top .objective-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fbbf24;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.vim-objective-top .objective-text {
+  font-size: 15px;
+  color: #e6edf3;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
 .vim-mode {
   color: #4ec9b0;
   font-weight: bold;
@@ -44,6 +71,12 @@
   display: flex;
   gap: 20px;
   color: #dcdcaa;
+}
+
+.lesson-indicator {
+  color: #58a6ff;
+  font-weight: 600;
+  opacity: 0.8;
 }
 
 .vim-editor {
@@ -162,6 +195,33 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.vim-objective {
+  margin-bottom: 15px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.12) 0%, rgba(251, 191, 36, 0.06) 100%);
+  border: 2px solid rgba(251, 191, 36, 0.4);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.15);
+}
+
+.vim-objective .objective-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fbbf24;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.vim-objective .objective-text {
+  font-size: 15px;
+  color: #e6edf3;
+  line-height: 1.5;
+  font-weight: 500;
 }
 
 .vim-hints {

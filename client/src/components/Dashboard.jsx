@@ -686,6 +686,7 @@ function Dashboard({ username, token, onLogout }) {
           </h1>
           <div className="welcome">
             <span>Welcome, <strong>{username}</strong>!</span>
+            <span className="user-points">⭐ {calculateTotalPoints()} Points</span>
             {activeCustomizations.title && (
               <span className="user-title">
                 {shopItems.find(i => i.id === activeCustomizations.title)?.title}
@@ -772,7 +773,10 @@ function Dashboard({ username, token, onLogout }) {
                   {currentLesson.difficulty}
                 </span>
               </div>
-              <p className="lesson-instructions">📋 {currentLesson.instructions}</p>
+              <div className="lesson-objective">
+                <div className="objective-label">🎯 Objective:</div>
+                <div className="objective-text">{currentLesson.instructions}</div>
+              </div>
             </div>
             <VimSimulatorRefactored
               lesson={currentLesson}

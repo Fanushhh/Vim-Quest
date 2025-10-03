@@ -322,7 +322,8 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
       state.cursorPos,
       startTime,
       state.mistakes,
-      undoPerformed
+      undoPerformed,
+      state.marks
     );
 
     if (result) {
@@ -398,6 +399,18 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
         if (e.key === 'Escape') {
           e.preventDefault();
           handleCommand('ESC');
+          return;
+        }
+
+        if (e.key === 'Backspace') {
+          e.preventDefault();
+          // Move cursor back in replace mode (doesn't delete)
+          if (state.cursorPos.col > 0) {
+            dispatch({
+              type: 'SET_CURSOR',
+              payload: { ...state.cursorPos, col: state.cursorPos.col - 1 }
+            });
+          }
           return;
         }
 
@@ -637,7 +650,14 @@ function VimSimulatorRefactored({ lesson, onComplete, onNextLesson, onBackToLess
         ← Back to Lessons
       </button>
 
-      <VimHeader mode={state.mode} mistakes={state.mistakes} cursorPos={state.cursorPos} />
+      <VimHeader mode={state.mode} mistakes={state.mistakes} cursorPos={state.cursorPos} lessonNumber={lesson.id} />
+
+      {!completionTriggered && (
+        <div className="vim-objective-top">
+          <span className="objective-label">🎯 Objective:</span>
+          <span className="objective-text">{lesson.instructions}</span>
+        </div>
+      )}
 
       <VimEditor
         textLines={state.textLines}

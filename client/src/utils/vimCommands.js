@@ -209,15 +209,12 @@ export function deleteText(textLines, cursorPos, command, visualStart = null, mo
   } else if (command === 'd' && mode === 'visual' && visualStart) {
     // Delete visual selection (character-wise)
     const start = Math.min(visualStart.col, cursorPos.col);
-    let end = Math.max(visualStart.col, cursorPos.col);
+    const end = Math.max(visualStart.col, cursorPos.col);
     const line = newLines[cursorPos.row];
 
     if (line && visualStart.row === cursorPos.row) {
-      // Visual mode delete: from start up to (but not including) end position
-      // This matches Vim's behavior where the selection is start-inclusive, end-exclusive
-      // Exception: if we're selecting backwards or just one character, include end
-      const deleteEnd = end > start ? end : end + 1;
-      const newLine = line.slice(0, start) + line.slice(deleteEnd);
+      // Visual mode delete: from start to end (inclusive, as in Vim's visual mode)
+      const newLine = line.slice(0, start) + line.slice(end + 1);
       newLines[cursorPos.row] = newLine;
       // Ensure cursor doesn't exceed new line length
       newCursorPos.col = Math.min(start, Math.max(0, newLine.length - 1));
@@ -360,9 +357,8 @@ export function yankText(textLines, cursorPos, command, visualStart = null, mode
       const line = textLines[cursorPos.row];
       const start = Math.min(visualStart.col, cursorPos.col);
       const end = Math.max(visualStart.col, cursorPos.col);
-      // Yank from start up to (but not including) end position
-      const yankEnd = end > start ? end : end + 1;
-      yankedContent = line.slice(start, yankEnd);
+      // Yank from start to end (inclusive, as in Vim's visual mode)
+      yankedContent = line.slice(start, end + 1);
       registerType = 'char';
     }
   }
@@ -487,11 +483,19 @@ export function pasteText(textLines, cursorPos, register, registerType, command)
 }
 
 // Check completion for different task types
-export function checkTaskCompletion(lesson, textLines, cursorPos, startTime, mistakes, undoPerformed = false) {
+export function checkTaskCompletion(lesson, textLines, cursorPos, startTime, mistakes, undoPerformed = false, marks = {}) {
   // Position-based completion
   if (lesson.targetPosition) {
     if (cursorPos.row === lesson.targetPosition.row &&
         cursorPos.col === lesson.targetPosition.col) {
+      return createCompletionResult(lesson.id, startTime, mistakes);
+    }
+  }
+
+  // Marks task completion - check if required marks are set
+  if (lesson.task === 'marks' && lesson.requiredMarks) {
+    const allMarksSet = lesson.requiredMarks.every(markName => marks[markName] !== undefined);
+    if (allMarksSet) {
       return createCompletionResult(lesson.id, startTime, mistakes);
     }
   }
@@ -555,8 +559,10 @@ export function checkTaskCompletion(lesson, textLines, cursorPos, startTime, mis
   // Replace task completion - check if text matches target state or has changed
   if (lesson.task === 'replace') {
     if (lesson.targetState) {
-      // If targetState is defined, check for exact match
-      if (JSON.stringify(textLines) === JSON.stringify(lesson.targetState)) {
+      // If targetState is defined, check for match (trim trailing spaces)
+      const currentState = textLines.map(line => line.trimEnd());
+      const targetState = lesson.targetState.map(line => line.trimEnd());
+      if (JSON.stringify(currentState) === JSON.stringify(targetState)) {
         return createCompletionResult(lesson.id, startTime, mistakes);
       }
     } else if (lesson.initialText) {

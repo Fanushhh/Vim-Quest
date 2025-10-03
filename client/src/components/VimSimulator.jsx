@@ -343,6 +343,7 @@ function VimSimulator({ lesson, onComplete }) {
       <div className="vim-header">
         <div className="vim-mode">Mode: {mode.toUpperCase()}</div>
         <div className="vim-stats">
+          <span className="lesson-indicator">Lesson {lesson.id}</span>
           <span>Mistakes: {mistakes}</span>
           <span>Position: {cursorPos.row}:{cursorPos.col}</span>
         </div>

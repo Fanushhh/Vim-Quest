@@ -276,7 +276,7 @@ export const lessons = [
       "Fix these errors: X should be Y",
       "Change wrong to right in this sentence: wrong answer",
       "Replace A with B: testing A here",
-      "Use Replace mode: fix_this_entire_word"
+      "Use Replace mode to change: WRONGWORDHERE to correct_word_here"
     ],
     task: "replace",
     targetState: [
@@ -285,15 +285,16 @@ export const lessons = [
       "Fix these errors: Y should be Y",
       "Change wrong to right in this sentence: right answer",
       "Replace A with B: testing B here",
-      "Use Replace mode: correct_word_here"
+      "Use Replace mode to change: correct_word_here to correct_word_here"
     ],
     allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'gg', 'G', 'r', 'R', 'c', 'cw', 'ESC', 'i', 'a'],
     hints: [
-      "Use 'r' to replace single characters",
-      "Use 'cw' to change entire words",
-      "Use 'R' to enter replace mode for multiple characters",
-      "Remember to press ESC after using insert/replace modes",
-      "Navigate carefully to each position before replacing"
+      "Line 1: Use 'r' to replace X with O",
+      "Line 2: Use 'cw' on 'bad' and type 'good'",
+      "Line 3: Use 'r' to replace X with Y",
+      "Line 4: Use 'cw' on 'wrong' and type 'right'",
+      "Line 5: Use 'r' to replace A with B",
+      "Line 6: Use 'R' on WRONGWORDHERE and type 'correct_word_here' (press ESC when done)"
     ]
   },
   {
@@ -301,7 +302,7 @@ export const lessons = [
     title: "Marks and Jumps - m, '",
     description: "Bookmark positions",
     difficulty: "advanced",
-    instructions: "Use m{a-z} to set multiple marks, '{a-z} to jump between marks efficiently",
+    instructions: "Set 3 marks (a, b, c) and practice jumping between them",
     initialText: [
       "Set mark 'a' here with ma - this is position A",
       "Navigate down to the next section",
@@ -311,18 +312,18 @@ export const lessons = [
       "Now practice jumping between marks",
       "Jump to 'a then to 'b then to 'c",
       "Practice multiple jumps: 'a 'b 'c 'a 'c 'b",
-      "Marks make navigation powerful",
-      "Final target after jumping to all marks X"
+      "Marks make navigation powerful and efficient!"
     ],
-    targetPosition: { row: 9, col: 42 },
+    task: "marks",
+    requiredMarks: ['a', 'b', 'c'],
     allowedCommands: ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'gg', 'G', '{', '}', 'm', "'", 'a', 'b', 'c'],
     hints: [
-      "Set mark 'a' on line 1 with 'ma'",
-      "Set mark 'b' on line 3 with 'mb'",
-      "Set mark 'c' on line 5 with 'mc'",
-      "Jump to marks using 'a, 'b, 'c",
-      "Practice jumping between marks multiple times",
-      "Final target is at the end of the last line"
+      "Navigate to line 1 and press 'ma' to set mark a",
+      "Navigate to line 3 and press 'mb' to set mark b",
+      "Navigate to line 5 and press 'mc' to set mark c",
+      "Test your marks: type 'a to jump to mark a",
+      "Practice jumping between marks with 'a, 'b, 'c",
+      "Lesson completes when all 3 marks are set"
     ]
   },
   {
