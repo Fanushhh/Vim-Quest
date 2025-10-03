@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useFetch, usePost } from './useApi';
-
-const API_URL = 'http://localhost:3001';
+import { API_URL } from '../config';
 
 export function useBoosters(token) {
   const [boosters, setBoosters] = useState({

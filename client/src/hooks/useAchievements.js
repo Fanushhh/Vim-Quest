@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { lessons } from '../data/lessons';
 import { achievementList as fullAchievementList } from '../data/achievements';
-
-const API_URL = 'http://localhost:3001';
+import { API_URL } from '../config';
 
 const achievementList = [
   'first_lesson', 'beginner_complete', 'intermediate_complete', 'advanced_complete',

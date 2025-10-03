@@ -684,39 +684,44 @@ function Dashboard({ username, token, onLogout }) {
               <span className="booster-badge double-xp">⚡ 2X POINTS</span>
             )}
           </h1>
-          <div className="welcome">
-            <span>Welcome, <strong>{username}</strong>!</span>
-            <span className="user-points">⭐ {calculateTotalPoints()} Points</span>
-            {activeCustomizations.title && (
-              <span className="user-title">
-                {shopItems.find(i => i.id === activeCustomizations.title)?.title}
-              </span>
-            )}
+          <div className="username-display">{username}</div>
+          {activeCustomizations.title && (
+            <div className="user-title">
+              {shopItems.find(i => i.id === activeCustomizations.title)?.title}
+            </div>
+          )}
+        </div>
+        <div className="header-center">
+          <DailyChallengeCompact
+            ref={dailyChallengeRef}
+            token={token}
+            onChallengeComplete={handleChallengeComplete}
+          />
+          <StreakCompact ref={streakRef} token={token} />
+          <div className="header-stats-row">
+            <div className="stat-item">
+              <span className="stat-label">PROGRESS</span>
+              <span className="stat-value">{getCompletedCount()}/18</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">POINTS</span>
+              <span className="stat-value">{calculateTotalPoints()}</span>
+            </div>
             {activeBoosters.extraHints > 0 && (
-              <span className="booster-info">💡 {activeBoosters.extraHints} extra hints</span>
+              <div className="stat-item booster">
+                <span className="stat-label">HINTS</span>
+                <span className="stat-value">+{activeBoosters.extraHints}</span>
+              </div>
             )}
             {activeBoosters.streakFreeze > 0 && (
-              <span className="booster-info">❄️ {activeBoosters.streakFreeze} streak freeze</span>
+              <div className="stat-item booster">
+                <span className="stat-label">FREEZE</span>
+                <span className="stat-value">{activeBoosters.streakFreeze}</span>
+              </div>
             )}
           </div>
         </div>
         <div className="header-right">
-          <div className="stats">
-            <div className="stat">
-              <span className="stat-value">{getCompletedCount()}</span>
-              <span className="stat-label">Lessons Completed</span>
-            </div>
-            <div className="stat">
-              <span className="stat-value">{achievements.length}</span>
-              <span className="stat-label">Achievements</span>
-            </div>
-            <StreakCompact ref={streakRef} token={token} />
-            <DailyChallengeCompact
-              ref={dailyChallengeRef}
-              token={token}
-              onChallengeComplete={handleChallengeComplete}
-            />
-          </div>
           <button className="logout-button" onClick={onLogout}>Logout</button>
         </div>
       </header>

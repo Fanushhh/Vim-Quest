@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
-
-const API_URL = 'http://localhost:3001';
+import { API_URL } from '../config';
 
 export function useApi(url, options = {}) {
   const [data, setData] = useState(null);

@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-
-const API_URL = 'http://localhost:3001';
+import { API_URL } from '../config';
 
 export function useLeaderboard(token, view = 'global', selectedLesson = null, sortBy = 'score') {
   const [data, setData] = useState([]);
