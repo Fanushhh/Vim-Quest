@@ -11,7 +11,9 @@
       "Bash(sqlite3:*)",
       "Bash(mkdir:*)",
       "Bash(netstat:*)",
-      "Bash(lsof:*)"
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(xargs -r kill -9)"
     ],
     "deny": [],
     "ask": []

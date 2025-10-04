@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import db from './database.js';
+import pool from './database.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -63,13 +63,15 @@ app.post('/api/register', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const stmt = db.prepare('INSERT INTO users (username, password) VALUES (?, ?)');
-    const result = stmt.run(username, hashedPassword);
+    const result = await pool.query(
+      'INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id',
+      [username, hashedPassword]
+    );
 
-    const token = jwt.sign({ id: result.lastInsertRowid, username }, JWT_SECRET);
+    const token = jwt.sign({ id: result.rows[0].id, username }, JWT_SECRET);
     res.json({ token, username });
   } catch (error) {
-    if (error.code === 'SQLITE_CONSTRAINT') {
+    if (error.code === '23505') { // PostgreSQL unique violation
       res.status(400).json({ error: 'Username already exists' });
     } else {
       res.status(500).json({ error: 'Server error' });
@@ -82,8 +84,8 @@ app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const stmt = db.prepare('SELECT * FROM users WHERE username = ?');
-    const user = stmt.get(username);
+    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    const user = result.rows[0];
 
     if (!user) {
       return res.status(400).json({ error: 'Invalid credentials' });
@@ -102,42 +104,36 @@ app.post('/api/login', async (req, res) => {
 });
 
 // Get user progress
-app.get('/api/progress', authenticateToken, (req, res) => {
+app.get('/api/progress', authenticateToken, async (req, res) => {
   try {
-    const stmt = db.prepare('SELECT * FROM progress WHERE user_id = ?');
-    const progress = stmt.all(req.user.id);
-    res.json(progress);
+    const result = await pool.query('SELECT * FROM progress WHERE user_id = $1', [req.user.id]);
+    res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
 // Save lesson progress
-app.post('/api/progress', authenticateToken, (req, res) => {
+app.post('/api/progress', authenticateToken, async (req, res) => {
   try {
     const { lessonId, completed, score, timeTaken, mistakes } = req.body;
 
-    const stmt = db.prepare(`
+    await pool.query(`
       INSERT INTO progress (user_id, lesson_id, completed, score, time_taken, mistakes, completed_at)
-      VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
       ON CONFLICT(user_id, lesson_id)
-      DO UPDATE SET completed = ?, score = ?, time_taken = ?, mistakes = ?, completed_at = CURRENT_TIMESTAMP
-    `);
-
-    stmt.run(
-      req.user.id, lessonId, completed ? 1 : 0, score, timeTaken, mistakes,
-      completed ? 1 : 0, score, timeTaken, mistakes
-    );
+      DO UPDATE SET completed = $3, score = $4, time_taken = $5, mistakes = $6, completed_at = CURRENT_TIMESTAMP
+    `, [req.user.id, lessonId, completed, score, timeTaken, mistakes]);
 
     // Update leaderboard and streak if lesson is completed
     if (completed) {
-      updateLeaderboard(req.user.id, req.user.username, {
+      await updateLeaderboard(req.user.id, req.user.username, {
         lessonId,
         score,
         timeTaken,
         mistakes
       });
-      updateUserStreak(req.user.id);
+      await updateUserStreak(req.user.id);
     }
 
     res.json({ success: true });
@@ -148,27 +144,26 @@ app.post('/api/progress', authenticateToken, (req, res) => {
 });
 
 // Get achievements
-app.get('/api/achievements', authenticateToken, (req, res) => {
+app.get('/api/achievements', authenticateToken, async (req, res) => {
   try {
-    const stmt = db.prepare('SELECT * FROM achievements WHERE user_id = ?');
-    const achievements = stmt.all(req.user.id);
-    res.json(achievements);
+    const result = await pool.query('SELECT * FROM achievements WHERE user_id = $1', [req.user.id]);
+    res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
 // Unlock achievement
-app.post('/api/achievements', authenticateToken, (req, res) => {
+app.post('/api/achievements', authenticateToken, async (req, res) => {
   try {
     const { achievementType } = req.body;
 
-    const stmt = db.prepare(`
-      INSERT OR IGNORE INTO achievements (user_id, achievement_type)
-      VALUES (?, ?)
-    `);
+    await pool.query(`
+      INSERT INTO achievements (user_id, achievement_type)
+      VALUES ($1, $2)
+      ON CONFLICT (user_id, achievement_type) DO NOTHING
+    `, [req.user.id, achievementType]);
 
-    stmt.run(req.user.id, achievementType);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -176,27 +171,26 @@ app.post('/api/achievements', authenticateToken, (req, res) => {
 });
 
 // Get user purchases
-app.get('/api/purchases', authenticateToken, (req, res) => {
+app.get('/api/purchases', authenticateToken, async (req, res) => {
   try {
-    const stmt = db.prepare('SELECT item_id FROM user_purchases WHERE user_id = ?');
-    const purchases = stmt.all(req.user.id);
-    res.json(purchases.map(p => p.item_id));
+    const result = await pool.query('SELECT item_id FROM user_purchases WHERE user_id = $1', [req.user.id]);
+    res.json(result.rows.map(p => p.item_id));
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
 // Save purchase
-app.post('/api/purchases', authenticateToken, (req, res) => {
+app.post('/api/purchases', authenticateToken, async (req, res) => {
   try {
     const { itemId } = req.body;
 
-    const stmt = db.prepare(`
-      INSERT OR IGNORE INTO user_purchases (user_id, item_id)
-      VALUES (?, ?)
-    `);
+    await pool.query(`
+      INSERT INTO user_purchases (user_id, item_id)
+      VALUES ($1, $2)
+      ON CONFLICT (user_id, item_id) DO NOTHING
+    `, [req.user.id, itemId]);
 
-    stmt.run(req.user.id, itemId);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -204,35 +198,36 @@ app.post('/api/purchases', authenticateToken, (req, res) => {
 });
 
 // Get user customizations
-app.get('/api/customizations', authenticateToken, (req, res) => {
+app.get('/api/customizations', authenticateToken, async (req, res) => {
   try {
-    const stmt = db.prepare('SELECT customization_type, item_id FROM user_customizations WHERE user_id = ?');
-    const customizations = stmt.all(req.user.id);
+    const result = await pool.query(
+      'SELECT customization_type, item_id FROM user_customizations WHERE user_id = $1',
+      [req.user.id]
+    );
 
-    const result = {};
-    customizations.forEach(c => {
-      result[c.customization_type] = c.item_id;
+    const customizations = {};
+    result.rows.forEach(c => {
+      customizations[c.customization_type] = c.item_id;
     });
 
-    res.json(result);
+    res.json(customizations);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
 // Save customizations
-app.post('/api/customizations', authenticateToken, (req, res) => {
+app.post('/api/customizations', authenticateToken, async (req, res) => {
   try {
     const { customizationType, itemId } = req.body;
 
-    const stmt = db.prepare(`
+    await pool.query(`
       INSERT INTO user_customizations (user_id, customization_type, item_id, updated_at)
-      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
       ON CONFLICT(user_id, customization_type)
-      DO UPDATE SET item_id = ?, updated_at = CURRENT_TIMESTAMP
-    `);
+      DO UPDATE SET item_id = $3, updated_at = CURRENT_TIMESTAMP
+    `, [req.user.id, customizationType, itemId]);
 
-    stmt.run(req.user.id, customizationType, itemId, itemId);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -240,36 +235,34 @@ app.post('/api/customizations', authenticateToken, (req, res) => {
 });
 
 // Get user boosters
-app.get('/api/boosters', authenticateToken, (req, res) => {
+app.get('/api/boosters', authenticateToken, async (req, res) => {
   try {
-    const stmt = db.prepare('SELECT booster_type, value FROM user_boosters WHERE user_id = ?');
-    const boosters = stmt.all(req.user.id);
+    const result = await pool.query('SELECT booster_type, value FROM user_boosters WHERE user_id = $1', [req.user.id]);
 
-    const result = {};
-    boosters.forEach(b => {
-      result[b.booster_type] = JSON.parse(b.value);
+    const boosters = {};
+    result.rows.forEach(b => {
+      boosters[b.booster_type] = JSON.parse(b.value);
     });
 
-    res.json(result);
+    res.json(boosters);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
 });
 
 // Save boosters
-app.post('/api/boosters', authenticateToken, (req, res) => {
+app.post('/api/boosters', authenticateToken, async (req, res) => {
   try {
     const { boosterType, value } = req.body;
 
-    const stmt = db.prepare(`
-      INSERT INTO user_boosters (user_id, booster_type, value, updated_at)
-      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(user_id, booster_type)
-      DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP
-    `);
-
     const jsonValue = JSON.stringify(value);
-    stmt.run(req.user.id, boosterType, jsonValue, jsonValue);
+    await pool.query(`
+      INSERT INTO user_boosters (user_id, booster_type, value, updated_at)
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id, booster_type)
+      DO UPDATE SET value = $3, updated_at = CURRENT_TIMESTAMP
+    `, [req.user.id, boosterType, jsonValue]);
+
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -286,13 +279,13 @@ const challengeTypes = [
 ];
 
 // Get or create today's daily challenge
-app.get('/api/daily-challenge', authenticateToken, (req, res) => {
+app.get('/api/daily-challenge', authenticateToken, async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
 
     // Check if today's challenge exists
-    let challengeStmt = db.prepare('SELECT * FROM daily_challenges WHERE challenge_date = ?');
-    let challenge = challengeStmt.get(today);
+    let challengeResult = await pool.query('SELECT * FROM daily_challenges WHERE challenge_date = $1', [today]);
+    let challenge = challengeResult.rows[0];
 
     // If no challenge for today, create one
     if (!challenge) {
@@ -305,32 +298,31 @@ app.get('/api/daily-challenge', authenticateToken, (req, res) => {
         challengeData.description = `Complete lesson #${challengeData.lessonId} today`;
       }
 
-      const insertStmt = db.prepare(`
+      await pool.query(`
         INSERT INTO daily_challenges (challenge_date, challenge_type, challenge_data, points_reward)
-        VALUES (?, ?, ?, ?)
-      `);
+        VALUES ($1, $2, $3, $4)
+      `, [today, randomType.type, JSON.stringify(challengeData), 50]);
 
-      insertStmt.run(today, randomType.type, JSON.stringify(challengeData), 50);
-      challenge = challengeStmt.get(today);
+      challengeResult = await pool.query('SELECT * FROM daily_challenges WHERE challenge_date = $1', [today]);
+      challenge = challengeResult.rows[0];
     }
 
     // Check if user completed today's challenge
-    const completionStmt = db.prepare(`
+    const completionResult = await pool.query(`
       SELECT * FROM user_daily_completions
-      WHERE user_id = ? AND challenge_id = ?
-    `);
-    const completion = completionStmt.get(req.user.id, challenge.id);
+      WHERE user_id = $1 AND challenge_id = $2
+    `, [req.user.id, challenge.id]);
+    const completion = completionResult.rows[0];
 
     // For three_lessons challenge, count lessons completed today
     let lessonsCompletedToday = 0;
     if (challenge.challenge_type === 'three_lessons') {
-      const lessonCountStmt = db.prepare(`
+      const lessonCountResult = await pool.query(`
         SELECT COUNT(DISTINCT lesson_id) as count
         FROM progress
-        WHERE user_id = ? AND DATE(completed_at) = ? AND completed = 1
-      `);
-      const result = lessonCountStmt.get(req.user.id, today);
-      lessonsCompletedToday = result?.count || 0;
+        WHERE user_id = $1 AND DATE(completed_at) = $2 AND completed = true
+      `, [req.user.id, today]);
+      lessonsCompletedToday = parseInt(lessonCountResult.rows[0]?.count) || 0;
     }
 
     res.json({
@@ -347,19 +339,18 @@ app.get('/api/daily-challenge', authenticateToken, (req, res) => {
 });
 
 // Complete daily challenge
-app.post('/api/daily-challenge/complete', authenticateToken, (req, res) => {
+app.post('/api/daily-challenge/complete', authenticateToken, async (req, res) => {
   try {
     const { challengeId, timeTaken, score } = req.body;
 
-    const stmt = db.prepare(`
-      INSERT OR IGNORE INTO user_daily_completions (user_id, challenge_id, time_taken, score)
-      VALUES (?, ?, ?, ?)
-    `);
-
-    stmt.run(req.user.id, challengeId, timeTaken, score);
+    await pool.query(`
+      INSERT INTO user_daily_completions (user_id, challenge_id, time_taken, score)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (user_id, challenge_id) DO NOTHING
+    `, [req.user.id, challengeId, timeTaken, score]);
 
     // Update streak
-    updateUserStreak(req.user.id);
+    await updateUserStreak(req.user.id);
 
     res.json({ success: true });
   } catch (error) {
@@ -369,19 +360,19 @@ app.post('/api/daily-challenge/complete', authenticateToken, (req, res) => {
 });
 
 // Get user streak
-app.get('/api/streak', authenticateToken, (req, res) => {
+app.get('/api/streak', authenticateToken, async (req, res) => {
   try {
-    const stmt = db.prepare('SELECT * FROM user_streaks WHERE user_id = ?');
-    let streak = stmt.get(req.user.id);
+    let streakResult = await pool.query('SELECT * FROM user_streaks WHERE user_id = $1', [req.user.id]);
+    let streak = streakResult.rows[0];
 
     // Initialize streak if doesn't exist
     if (!streak) {
-      const insertStmt = db.prepare(`
+      await pool.query(`
         INSERT INTO user_streaks (user_id, current_streak, longest_streak, streak_freeze_count)
-        VALUES (?, 0, 0, 0)
-      `);
-      insertStmt.run(req.user.id);
-      streak = stmt.get(req.user.id);
+        VALUES ($1, 0, 0, 0)
+      `, [req.user.id]);
+      streakResult = await pool.query('SELECT * FROM user_streaks WHERE user_id = $1', [req.user.id]);
+      streak = streakResult.rows[0];
     }
 
     // Check if streak should be broken (more than 1 day gap)
@@ -392,22 +383,20 @@ app.get('/api/streak', authenticateToken, (req, res) => {
 
       if (daysDiff > 1 && streak.streak_freeze_count > 0) {
         // Use streak freeze
-        const updateStmt = db.prepare(`
+        await pool.query(`
           UPDATE user_streaks
           SET streak_freeze_count = streak_freeze_count - 1,
-              last_activity_date = DATE('now')
-          WHERE user_id = ?
-        `);
-        updateStmt.run(req.user.id);
+              last_activity_date = CURRENT_DATE
+          WHERE user_id = $1
+        `, [req.user.id]);
         streak.streak_freeze_count -= 1;
       } else if (daysDiff > 1) {
         // Break streak
-        const updateStmt = db.prepare(`
+        await pool.query(`
           UPDATE user_streaks
           SET current_streak = 0
-          WHERE user_id = ?
-        `);
-        updateStmt.run(req.user.id);
+          WHERE user_id = $1
+        `, [req.user.id]);
         streak.current_streak = 0;
       }
     }
@@ -420,19 +409,18 @@ app.get('/api/streak', authenticateToken, (req, res) => {
 });
 
 // Update streak (helper function)
-function updateUserStreak(userId) {
-  const stmt = db.prepare('SELECT * FROM user_streaks WHERE user_id = ?');
-  let streak = stmt.get(userId);
+async function updateUserStreak(userId) {
+  const streakResult = await pool.query('SELECT * FROM user_streaks WHERE user_id = $1', [userId]);
+  let streak = streakResult.rows[0];
 
   const today = new Date().toISOString().split('T')[0];
 
   if (!streak) {
     // Initialize streak
-    const insertStmt = db.prepare(`
+    await pool.query(`
       INSERT INTO user_streaks (user_id, current_streak, longest_streak, last_activity_date)
-      VALUES (?, 1, 1, ?)
-    `);
-    insertStmt.run(userId, today);
+      VALUES ($1, 1, 1, $2)
+    `, [userId, today]);
   } else {
     const lastActivity = streak.last_activity_date;
 
@@ -454,31 +442,28 @@ function updateUserStreak(userId) {
 
       const longestStreak = Math.max(streak.longest_streak, newStreak);
 
-      const updateStmt = db.prepare(`
+      await pool.query(`
         UPDATE user_streaks
-        SET current_streak = ?,
-            longest_streak = ?,
-            last_activity_date = ?
-        WHERE user_id = ?
-      `);
-
-      updateStmt.run(newStreak, longestStreak, today, userId);
+        SET current_streak = $1,
+            longest_streak = $2,
+            last_activity_date = $3
+        WHERE user_id = $4
+      `, [newStreak, longestStreak, today, userId]);
     }
   }
 }
 
 // Add streak freeze
-app.post('/api/streak/freeze', authenticateToken, (req, res) => {
+app.post('/api/streak/freeze', authenticateToken, async (req, res) => {
   try {
     const { amount } = req.body;
 
-    const stmt = db.prepare(`
+    await pool.query(`
       UPDATE user_streaks
-      SET streak_freeze_count = streak_freeze_count + ?
-      WHERE user_id = ?
-    `);
+      SET streak_freeze_count = streak_freeze_count + $1
+      WHERE user_id = $2
+    `, [amount, req.user.id]);
 
-    stmt.run(amount, req.user.id);
     res.json({ success: true });
   } catch (error) {
     console.error('Error adding streak freeze:', error);
@@ -487,11 +472,11 @@ app.post('/api/streak/freeze', authenticateToken, (req, res) => {
 });
 
 // Update leaderboard (called after lesson completion)
-function updateLeaderboard(userId, username, lessonData) {
+async function updateLeaderboard(userId, username, lessonData) {
   try {
     // Get user's current progress
-    const progressStmt = db.prepare('SELECT * FROM progress WHERE user_id = ? AND completed = 1');
-    const userProgress = progressStmt.all(userId);
+    const progressResult = await pool.query('SELECT * FROM progress WHERE user_id = $1 AND completed = true', [userId]);
+    const userProgress = progressResult.rows;
 
     const totalLessonsCompleted = userProgress.length;
     const totalScore = userProgress.reduce((sum, p) => sum + (p.score || 0), 0);
@@ -500,65 +485,59 @@ function updateLeaderboard(userId, username, lessonData) {
     const fastestTime = Math.min(...userProgress.map(p => p.time_taken || Infinity).filter(t => t !== Infinity), Infinity);
 
     // Get achievements count
-    const achievementStmt = db.prepare('SELECT COUNT(*) as count FROM achievements WHERE user_id = ?');
-    const achievementCount = achievementStmt.get(userId).count;
+    const achievementResult = await pool.query('SELECT COUNT(*) as count FROM achievements WHERE user_id = $1', [userId]);
+    const achievementCount = parseInt(achievementResult.rows[0].count);
 
     // Get current streak
-    const streakStmt = db.prepare('SELECT current_streak FROM user_streaks WHERE user_id = ?');
-    const streak = streakStmt.get(userId);
+    const streakResult = await pool.query('SELECT current_streak FROM user_streaks WHERE user_id = $1', [userId]);
+    const streak = streakResult.rows[0];
     const currentStreak = streak?.current_streak || 0;
 
     // Update main leaderboard
-    const updateStmt = db.prepare(`
+    await pool.query(`
       INSERT INTO leaderboard_entries (
         user_id, username, total_score, total_lessons_completed,
         average_score, total_achievements, fastest_lesson_time,
         perfect_lessons, current_streak, last_updated
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
       ON CONFLICT(user_id) DO UPDATE SET
-        username = excluded.username,
-        total_score = excluded.total_score,
-        total_lessons_completed = excluded.total_lessons_completed,
-        average_score = excluded.average_score,
-        total_achievements = excluded.total_achievements,
-        fastest_lesson_time = excluded.fastest_lesson_time,
-        perfect_lessons = excluded.perfect_lessons,
-        current_streak = excluded.current_streak,
+        username = $2,
+        total_score = $3,
+        total_lessons_completed = $4,
+        average_score = $5,
+        total_achievements = $6,
+        fastest_lesson_time = $7,
+        perfect_lessons = $8,
+        current_streak = $9,
         last_updated = CURRENT_TIMESTAMP
-    `);
-
-    updateStmt.run(
+    `, [
       userId, username, totalScore, totalLessonsCompleted,
       averageScore, achievementCount, fastestTime === Infinity ? null : fastestTime,
       perfectLessons, currentStreak
-    );
+    ]);
 
     // Update weekly leaderboard
     const weekStart = getWeekStart();
-    const weeklyStmt = db.prepare(`
+    await pool.query(`
       INSERT INTO weekly_leaderboard (user_id, username, week_start, weekly_score, weekly_lessons, weekly_achievements)
-      VALUES (?, ?, ?, ?, 1, 0)
+      VALUES ($1, $2, $3, $4, 1, 0)
       ON CONFLICT(user_id, week_start) DO UPDATE SET
-        weekly_score = weekly_score + ?,
-        weekly_lessons = weekly_lessons + 1
-    `);
-
-    weeklyStmt.run(userId, username, weekStart, lessonData.score || 0, lessonData.score || 0);
+        weekly_score = weekly_leaderboard.weekly_score + $4,
+        weekly_lessons = weekly_leaderboard.weekly_lessons + 1
+    `, [userId, username, weekStart, lessonData.score || 0]);
 
     // Update lesson-specific leaderboard
     if (lessonData.lessonId) {
-      const lessonStmt = db.prepare(`
+      await pool.query(`
         INSERT INTO lesson_leaderboard (user_id, username, lesson_id, best_time, best_score, attempts, last_updated)
-        VALUES (?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+        VALUES ($1, $2, $3, $4, $5, 1, CURRENT_TIMESTAMP)
         ON CONFLICT(user_id, lesson_id) DO UPDATE SET
-          best_time = CASE WHEN excluded.best_time < best_time THEN excluded.best_time ELSE best_time END,
-          best_score = CASE WHEN excluded.best_score > best_score THEN excluded.best_score ELSE best_score END,
-          attempts = attempts + 1,
+          best_time = CASE WHEN $4 < lesson_leaderboard.best_time THEN $4 ELSE lesson_leaderboard.best_time END,
+          best_score = CASE WHEN $5 > lesson_leaderboard.best_score THEN $5 ELSE lesson_leaderboard.best_score END,
+          attempts = lesson_leaderboard.attempts + 1,
           last_updated = CURRENT_TIMESTAMP
-      `);
-
-      lessonStmt.run(userId, username, lessonData.lessonId, lessonData.timeTaken || 0, lessonData.score || 0);
+      `, [userId, username, lessonData.lessonId, lessonData.timeTaken || 0, lessonData.score || 0]);
     }
   } catch (error) {
     console.error('Error updating leaderboard:', error);
@@ -575,27 +554,25 @@ function getWeekStart() {
 }
 
 // Get global leaderboard
-app.get('/api/leaderboard/global', (req, res) => {
+app.get('/api/leaderboard/global', async (req, res) => {
   try {
     const { sortBy = 'total_score', limit = 100 } = req.query;
 
     const validSortFields = ['total_score', 'average_score', 'total_achievements', 'fastest_lesson_time', 'perfect_lessons', 'current_streak'];
     const sortField = validSortFields.includes(sortBy) ? sortBy : 'total_score';
 
-    const stmt = db.prepare(`
+    const result = await pool.query(`
       SELECT
         user_id, username, total_score, total_lessons_completed,
         average_score, total_achievements, fastest_lesson_time,
         perfect_lessons, current_streak, last_updated
       FROM leaderboard_entries
       ORDER BY ${sortField} DESC, total_score DESC
-      LIMIT ?
-    `);
-
-    const leaderboard = stmt.all(limit);
+      LIMIT $1
+    `, [limit]);
 
     // Add rank
-    const rankedLeaderboard = leaderboard.map((entry, index) => ({
+    const rankedLeaderboard = result.rows.map((entry, index) => ({
       ...entry,
       rank: index + 1
     }));
@@ -608,24 +585,22 @@ app.get('/api/leaderboard/global', (req, res) => {
 });
 
 // Get weekly leaderboard
-app.get('/api/leaderboard/weekly', (req, res) => {
+app.get('/api/leaderboard/weekly', async (req, res) => {
   try {
     const { limit = 100 } = req.query;
     const weekStart = getWeekStart();
 
-    const stmt = db.prepare(`
+    const result = await pool.query(`
       SELECT
         user_id, username, weekly_score, weekly_lessons, weekly_achievements
       FROM weekly_leaderboard
-      WHERE week_start = ?
+      WHERE week_start = $1
       ORDER BY weekly_score DESC, weekly_lessons DESC
-      LIMIT ?
-    `);
-
-    const leaderboard = stmt.all(weekStart, limit);
+      LIMIT $2
+    `, [weekStart, limit]);
 
     // Add rank
-    const rankedLeaderboard = leaderboard.map((entry, index) => ({
+    const rankedLeaderboard = result.rows.map((entry, index) => ({
       ...entry,
       rank: index + 1,
       week_start: weekStart
@@ -639,26 +614,24 @@ app.get('/api/leaderboard/weekly', (req, res) => {
 });
 
 // Get lesson-specific leaderboard
-app.get('/api/leaderboard/lesson/:lessonId', (req, res) => {
+app.get('/api/leaderboard/lesson/:lessonId', async (req, res) => {
   try {
     const { lessonId } = req.params;
     const { sortBy = 'best_time', limit = 100 } = req.query;
 
     const sortField = sortBy === 'best_score' ? 'best_score DESC' : 'best_time ASC';
 
-    const stmt = db.prepare(`
+    const result = await pool.query(`
       SELECT
         user_id, username, lesson_id, best_time, best_score, attempts, last_updated
       FROM lesson_leaderboard
-      WHERE lesson_id = ?
+      WHERE lesson_id = $1
       ORDER BY ${sortField}
-      LIMIT ?
-    `);
-
-    const leaderboard = stmt.all(lessonId, limit);
+      LIMIT $2
+    `, [lessonId, limit]);
 
     // Add rank
-    const rankedLeaderboard = leaderboard.map((entry, index) => ({
+    const rankedLeaderboard = result.rows.map((entry, index) => ({
       ...entry,
       rank: index + 1
     }));
@@ -671,47 +644,45 @@ app.get('/api/leaderboard/lesson/:lessonId', (req, res) => {
 });
 
 // Get user's rank and position
-app.get('/api/leaderboard/rank', authenticateToken, (req, res) => {
+app.get('/api/leaderboard/rank', authenticateToken, async (req, res) => {
   try {
     const { type = 'global' } = req.query;
 
     if (type === 'weekly') {
       const weekStart = getWeekStart();
-      const stmt = db.prepare(`
+      const rankResult = await pool.query(`
         SELECT COUNT(*) + 1 as rank
         FROM weekly_leaderboard
-        WHERE week_start = ? AND weekly_score > (
+        WHERE week_start = $1 AND weekly_score > (
           SELECT weekly_score FROM weekly_leaderboard
-          WHERE user_id = ? AND week_start = ?
+          WHERE user_id = $2 AND week_start = $1
         )
-      `);
+      `, [weekStart, req.user.id]);
 
-      const result = stmt.get(weekStart, req.user.id, weekStart);
-
-      const userStmt = db.prepare(`
+      const userResult = await pool.query(`
         SELECT * FROM weekly_leaderboard
-        WHERE user_id = ? AND week_start = ?
-      `);
-      const userData = userStmt.get(req.user.id, weekStart);
+        WHERE user_id = $1 AND week_start = $2
+      `, [req.user.id, weekStart]);
 
-      res.json({ rank: result?.rank || null, ...userData });
+      const userData = userResult.rows[0];
+
+      res.json({ rank: parseInt(rankResult.rows[0]?.rank) || null, ...userData });
     } else {
-      const stmt = db.prepare(`
+      const rankResult = await pool.query(`
         SELECT COUNT(*) + 1 as rank
         FROM leaderboard_entries
         WHERE total_score > (
-          SELECT total_score FROM leaderboard_entries WHERE user_id = ?
+          SELECT total_score FROM leaderboard_entries WHERE user_id = $1
         )
-      `);
+      `, [req.user.id]);
 
-      const result = stmt.get(req.user.id);
+      const userResult = await pool.query(`
+        SELECT * FROM leaderboard_entries WHERE user_id = $1
+      `, [req.user.id]);
 
-      const userStmt = db.prepare(`
-        SELECT * FROM leaderboard_entries WHERE user_id = ?
-      `);
-      const userData = userStmt.get(req.user.id);
+      const userData = userResult.rows[0];
 
-      res.json({ rank: result?.rank || null, ...userData });
+      res.json({ rank: parseInt(rankResult.rows[0]?.rank) || null, ...userData });
     }
   } catch (error) {
     console.error('Error fetching user rank:', error);

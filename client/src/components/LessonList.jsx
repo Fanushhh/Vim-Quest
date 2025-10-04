@@ -16,7 +16,7 @@ function LessonList({ lessons, progress, onStartLesson }) {
 
   const isCompleted = (lessonId) => {
     const lessonProgress = getLessonProgress(lessonId);
-    return lessonProgress?.completed === 1;
+    return lessonProgress?.completed === true || lessonProgress?.completed === 1;
   };
 
   const getScore = (lessonId) => {

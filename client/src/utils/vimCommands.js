@@ -1,5 +1,5 @@
 // Movement commands
-export function moveCursor(cursorPos, textLines, command) {
+export function moveCursor(cursorPos, textLines, command, mode = 'normal') {
   const newPos = { ...cursorPos };
 
   switch (command) {
@@ -23,37 +23,94 @@ export function moveCursor(cursorPos, textLines, command) {
       const lineW = textLines[cursorPos.row] || '';
       let newColW = cursorPos.col;
 
-      // If currently on whitespace, move to next word
-      if (/\s/.test(lineW[newColW])) {
-        while (newColW < lineW.length && /\s/.test(lineW[newColW])) {
-          newColW++;
+      if (mode === 'visual' || mode === 'visual-line') {
+        // In visual mode, 'w' should extend selection through word and one trailing space
+        const restOfLine = lineW.slice(cursorPos.col);
+        const currentChar = lineW[cursorPos.col];
+
+        // If we're on a space, skip to the next word and include it + trailing space
+        if (/\s/.test(currentChar)) {
+          // Skip all spaces to get to the next word
+          let skipSpaces = 0;
+          while (skipSpaces < restOfLine.length && /\s/.test(restOfLine[skipSpaces])) {
+            skipSpaces++;
+          }
+
+          // Now match the word
+          const wordAfterSpaces = restOfLine.slice(skipSpaces);
+          const wordMatch = wordAfterSpaces.match(/^\S+/);
+
+          if (wordMatch && wordMatch[0].length > 0) {
+            const wordLength = wordMatch[0].length;
+            const charAfterWord = wordAfterSpaces[wordLength];
+
+            if (charAfterWord === ' ') {
+              // Position on the space after the next word
+              newColW = cursorPos.col + skipSpaces + wordLength;
+            } else {
+              // No space, position on last character of the next word
+              newColW = cursorPos.col + skipSpaces + wordLength - 1;
+            }
+          } else {
+            // No word found, go to end of line
+            newColW = Math.max(0, lineW.length - 1);
+          }
+        } else {
+          // We're on a word character
+          // Match just the current word (non-whitespace characters)
+          const wordMatch = restOfLine.match(/^\S+/);
+
+          if (wordMatch && wordMatch[0].length > 0) {
+            const wordLength = wordMatch[0].length;
+            const charAfterWord = restOfLine[wordLength];
+
+            // If there's a space after the word, include it in the selection
+            if (charAfterWord === ' ') {
+              // Position cursor on the space after the word
+              newColW = cursorPos.col + wordLength;
+            } else {
+              // No space after word, position on last character of word
+              newColW = cursorPos.col + wordLength - 1;
+            }
+          } else {
+            // At end of line or only spaces remaining
+            newColW = Math.max(0, lineW.length - 1);
+          }
         }
       } else {
-        // Determine current character type
-        const currentChar = lineW[newColW];
-        const isAlphaNum = /[a-zA-Z0-9_]/.test(currentChar);
-
-        if (isAlphaNum) {
-          // Move to end of alphanumeric word
-          while (newColW < lineW.length && /[a-zA-Z0-9_]/.test(lineW[newColW])) {
+        // Normal mode: move to beginning of next word
+        // If currently on whitespace, move to next word
+        if (/\s/.test(lineW[newColW])) {
+          while (newColW < lineW.length && /\s/.test(lineW[newColW])) {
             newColW++;
           }
         } else {
-          // Move past punctuation
-          while (newColW < lineW.length && /[^\sa-zA-Z0-9_]/.test(lineW[newColW])) {
+          // Determine current character type
+          const currentChar = lineW[newColW];
+          const isAlphaNum = /[a-zA-Z0-9_]/.test(currentChar);
+
+          if (isAlphaNum) {
+            // Move to end of alphanumeric word
+            while (newColW < lineW.length && /[a-zA-Z0-9_]/.test(lineW[newColW])) {
+              newColW++;
+            }
+          } else {
+            // Move past punctuation
+            while (newColW < lineW.length && /[^\sa-zA-Z0-9_]/.test(lineW[newColW])) {
+              newColW++;
+            }
+          }
+
+          // Skip whitespace to reach beginning of next word
+          while (newColW < lineW.length && /\s/.test(lineW[newColW])) {
             newColW++;
           }
         }
 
-        // Skip whitespace to reach beginning of next word
-        while (newColW < lineW.length && /\s/.test(lineW[newColW])) {
-          newColW++;
+        // Ensure we don't go past end of line
+        if (newColW >= lineW.length) {
+          newColW = Math.max(0, lineW.length - 1);
         }
-      }
-
-      // Ensure we don't go past end of line
-      if (newColW >= lineW.length) {
-        newColW = Math.max(0, lineW.length - 1);
       }
 
       newPos.col = newColW;

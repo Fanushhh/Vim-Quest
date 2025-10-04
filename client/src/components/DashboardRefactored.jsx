@@ -4,7 +4,7 @@ import { useGameState } from '../contexts/GameStateContext';
 import { useCustomizationContext } from '../contexts/CustomizationContext';
 import { useShopContext } from '../contexts/ShopContext';
 import LessonList from './LessonList';
-import VimSimulatorRefactored from './VimSimulatorRefactored';
+import VimSimulator from './VimSimulator';
 import Achievements from './Achievements';
 import Shop from './Shop';
 import Profile from './Profile';
@@ -85,7 +85,10 @@ function DashboardRefactored() {
     <div className="dashboard">
       <div className="dashboard-header">
         <div className="header-left">
-          <h1 className="dashboard-title">⌨️ VIM QUEST</h1>
+          <div className="title-section">
+            <h1 className="dashboard-title">⌨️ VIM QUEST</h1>
+            <span className="username-subtitle">{username}</span>
+          </div>
           {activeCustomizations.title && (
             <span className="user-title">
               {shopItems.find(i => i.id === activeCustomizations.title)?.title}
@@ -97,27 +100,22 @@ function DashboardRefactored() {
           <StreakCompact />
         </div>
         <div className="header-right">
-          <div className="header-stats">
-            <div className="stat">
-              <span className="stat-label">Progress</span>
-              <span className="stat-value">
-                {progress.progress.filter(p => p.completed).length}/{lessons.length}
-              </span>
-            </div>
-            <div className="stat">
-              <span className="stat-label">Points</span>
-              <span className="stat-value">{currentPoints}</span>
-            </div>
+          <div className="stat">
+            <span className="stat-label">PROGRESS</span>
+            <span className="stat-value">
+              {progress.progress.filter(p => p.completed).length}/{lessons.length}
+            </span>
           </div>
-          <div className="user-info">
-            <span className="username">{username}</span>
-            <button onClick={logout} className="logout-button">Logout</button>
+          <div className="stat">
+            <span className="stat-label">POINTS</span>
+            <span className="stat-value">{currentPoints}</span>
           </div>
+          <button onClick={logout} className="logout-button">Logout</button>
         </div>
       </div>
 
       {currentLesson && view === 'simulator' ? (
-        <VimSimulatorRefactored
+        <VimSimulator
           lesson={currentLesson}
           onBackToLessons={handleLessonExit}
           onNextLesson={handleNextLesson}

@@ -42,17 +42,27 @@
 .header-left {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.header-left h1 {
+.title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dashboard-title {
   font-size: 1.8rem;
   margin: 0;
   color: #e6edf3;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  line-height: 1.2;
+}
+
+.username-subtitle {
+  font-size: 0.85rem;
+  color: #8b949e;
+  font-weight: 500;
+  margin-left: 2px;
 }
 
 .header-center {
@@ -163,60 +173,42 @@
 
 .header-right{
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 12px;
+  align-items: center;
+  gap: 20px;
+  justify-content: flex-end;
 }
 
-.header-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-  gap: 12px;
-  width: 100%;
-}
-
-.stat-item {
+.header-right .stat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: rgba(88, 166, 255, 0.1);
-  padding: 10px 12px;
-  border-radius: 6px;
-  border: 1px solid rgba(88, 166, 255, 0.3);
+  gap: 2px;
 }
 
-.stat-item.booster {
-  background: rgba(251, 191, 36, 0.1);
-  border-color: rgba(251, 191, 36, 0.3);
-}
-
-.stat-item .stat-label {
-  font-size: 0.7rem;
+.header-right .stat-label {
+  font-size: 0.65rem;
   font-weight: 700;
   color: #8b949e;
   letter-spacing: 0.5px;
-  margin-bottom: 4px;
+  text-transform: uppercase;
 }
 
-.stat-item .stat-value {
-  font-size: 1.4rem;
+.header-right .stat-value {
+  font-size: 1.3rem;
   font-weight: 700;
   color: #58a6ff;
-}
-
-.stat-item.booster .stat-value {
-  color: #fbbf24;
+  line-height: 1;
 }
 
 .logout-button {
-  padding: 10px 20px;
+  padding: 8px 18px;
   background: var(--theme-card-bg);
   border: 1px solid var(--theme-border);
   color: #e6edf3;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
@@ -473,7 +465,8 @@
     text-align: center;
   }
 
-  .header-left .username-display {
+  .header-left {
+    align-items: center;
     text-align: center;
   }
 
@@ -487,13 +480,9 @@
   }
 
   .header-right {
-    align-items: center;
+    flex-direction: column;
     width: 100%;
-  }
-
-  .header-stats-row {
-    flex-wrap: wrap;
-    justify-content: center;
+    gap: 15px;
   }
 
   .logout-button {

@@ -1,321 +1,592 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { useVimState } from '../hooks/useVimState';
+import {
+  moveCursor,
+  deleteText,
+  insertText,
+  checkTaskCompletion,
+  findMatches,
+  yankText,
+  pasteText,
+  replaceText
+} from '../utils/vimCommands';
+import VimEditor from './VimEditor';
+import VimHeader from './VimHeader';
+import VimFooter from './VimFooter';
+import DebugPanel from './DebugPanel';
+import CompletionEffects from './CompletionEffects';
 import './VimSimulator.css';
 
-function VimSimulator({ lesson, onComplete }) {
-  const [cursorPos, setCursorPos] = useState({ row: 0, col: 0 });
-  const [mode, setMode] = useState('normal'); // normal, insert, visual
-  const [textLines, setTextLines] = useState([...lesson.initialText]);
-  const [commandHistory, setCommandHistory] = useState([]);
-  const [message, setMessage] = useState('');
-  const [mistakes, setMistakes] = useState(0);
-  const [startTime] = useState(Date.now());
-  const [pendingCommand, setPendingCommand] = useState('');
-  const [visualStart, setVisualStart] = useState(null);
+/**
+ * Main Vim Simulator Component
+ * Handles all Vim commands, modes, and lesson completion logic
+ */
+function VimSimulator({ lesson, onComplete, onNextLesson, onBackToLessons, editorStyle, completionEffect }) {
+  // ========== STATE MANAGEMENT ==========
+  const [state, dispatch] = useVimState(lesson.initialText);
+  const [startTime, setStartTime] = useState(Date.now());
+  const [completionTriggered, setCompletionTriggered] = useState(false);
+  const [completionData, setCompletionData] = useState(null);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [errors, setErrors] = useState([]);
+  const [undoPerformed, setUndoPerformed] = useState(false);
+  const [triggerEffect, setTriggerEffect] = useState(0);
 
+  // Search state
+  const [searchDirection, setSearchDirection] = useState('forward');
+
+  // Special input waiting states
+  const [waitingForReplaceChar, setWaitingForReplaceChar] = useState(false);
+  const [waitingForMarkName, setWaitingForMarkName] = useState(false);
+  const [waitingForJumpMark, setWaitingForJumpMark] = useState(false);
+
+  // ========== RESET STATE ON LESSON CHANGE ==========
+  useEffect(() => {
+    setStartTime(Date.now());
+    setCompletionTriggered(false);
+    setCompletionData(null);
+    setHasUserInteracted(false);
+    setErrors([]);
+    setSearchDirection('forward');
+    setUndoPerformed(false);
+    setWaitingForReplaceChar(false);
+    setWaitingForMarkName(false);
+    setWaitingForJumpMark(false);
+  }, [lesson.id]);
+
+  // ========== HELPER FUNCTIONS ==========
   const showMessage = (msg, duration = 0) => {
-    setMessage(msg);
+    dispatch({ type: 'SET_MESSAGE', payload: msg });
     if (duration > 0) {
-      setTimeout(() => setMessage(''), duration);
+      setTimeout(() => dispatch({ type: 'SET_MESSAGE', payload: '' }), duration);
     }
   };
 
-  const checkCompletion = useCallback((currentPos) => {
-    if (!lesson.targetPosition) return false;
+  const logError = (message) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setErrors(prev => [...prev, { timestamp, message }]);
+  };
 
-    return (
-      currentPos.row === lesson.targetPosition.row &&
-      currentPos.col === lesson.targetPosition.col
-    );
-  }, [lesson]);
+  // ========== COMMAND HANDLERS ==========
 
-  const handleCommand = useCallback((command) => {
+  const handleModeCommands = (command) => {
+    switch (command) {
+      case 'ESC':
+        dispatch({ type: 'EXIT_TO_NORMAL' });
+        return true;
+
+      case 'i':
+        dispatch({ type: 'ENTER_INSERT_MODE' });
+        return true;
+
+      case 'a': {
+        const newCol = Math.min(
+          state.textLines[state.cursorPos.row]?.length || 0,
+          state.cursorPos.col + 1
+        );
+        dispatch({ type: 'SET_CURSOR', payload: { ...state.cursorPos, col: newCol } });
+        dispatch({ type: 'ENTER_INSERT_MODE' });
+        return true;
+      }
+
+      case 'o': {
+        dispatch({ type: 'SAVE_STATE_FOR_UNDO' });
+        const newLines = [...state.textLines];
+        newLines.splice(state.cursorPos.row + 1, 0, '');
+        dispatch({ type: 'SET_TEXT_LINES', payload: newLines });
+        dispatch({ type: 'SET_CURSOR', payload: { row: state.cursorPos.row + 1, col: 0 } });
+        dispatch({ type: 'ENTER_INSERT_MODE' });
+        return true;
+      }
+
+      case 'O': {
+        dispatch({ type: 'SAVE_STATE_FOR_UNDO' });
+        const newLines = [...state.textLines];
+        newLines.splice(state.cursorPos.row, 0, '');
+        dispatch({ type: 'SET_TEXT_LINES', payload: newLines });
+        dispatch({ type: 'SET_CURSOR', payload: { row: state.cursorPos.row, col: 0 } });
+        dispatch({ type: 'ENTER_INSERT_MODE' });
+        return true;
+      }
+
+      case 'A': {
+        const endCol = state.textLines[state.cursorPos.row]?.length || 0;
+        dispatch({ type: 'SET_CURSOR', payload: { ...state.cursorPos, col: endCol } });
+        dispatch({ type: 'ENTER_INSERT_MODE' });
+        return true;
+      }
+
+      case 'I': {
+        const currentLine = state.textLines[state.cursorPos.row] || '';
+        const firstNonBlank = currentLine.search(/\S/);
+        const newCol = firstNonBlank === -1 ? 0 : firstNonBlank;
+        dispatch({ type: 'SET_CURSOR', payload: { ...state.cursorPos, col: newCol } });
+        dispatch({ type: 'ENTER_INSERT_MODE' });
+        return true;
+      }
+
+      case 'v':
+        if (state.mode === 'visual' || state.mode === 'visual-line') {
+          dispatch({ type: 'EXIT_TO_NORMAL' });
+        } else {
+          dispatch({ type: 'ENTER_VISUAL_MODE', payload: { ...state.cursorPos } });
+        }
+        return true;
+
+      case 'V':
+        if (state.mode === 'visual-line') {
+          dispatch({ type: 'EXIT_TO_NORMAL' });
+        } else {
+          dispatch({ type: 'ENTER_VISUAL_LINE_MODE', payload: { ...state.cursorPos } });
+        }
+        return true;
+    }
+    return false;
+  };
+
+  const handleSearchCommands = (command) => {
+    switch (command) {
+      case '/':
+        setSearchDirection('forward');
+        dispatch({ type: 'ENTER_SEARCH_MODE', payload: { direction: 'forward' } });
+        return true;
+
+      case '?':
+        setSearchDirection('backward');
+        dispatch({ type: 'ENTER_SEARCH_MODE', payload: { direction: 'backward' } });
+        return true;
+
+      case 'n':
+        if (state.searchMatches.length > 0) {
+          dispatch({ type: 'NEXT_MATCH' });
+          const nextIndex = (state.currentMatchIndex + 1) % state.searchMatches.length;
+          const nextMatch = state.searchMatches[nextIndex];
+          dispatch({ type: 'SET_CURSOR', payload: nextMatch });
+          showMessage(`Match ${nextIndex + 1} of ${state.searchMatches.length}`, 2000);
+        } else {
+          showMessage('No previous search', 2000);
+        }
+        return true;
+
+      case 'N':
+        if (state.searchMatches.length > 0) {
+          dispatch({ type: 'PREV_MATCH' });
+          const prevIndex = state.currentMatchIndex - 1 < 0
+            ? state.searchMatches.length - 1
+            : state.currentMatchIndex - 1;
+          const prevMatch = state.searchMatches[prevIndex];
+          dispatch({ type: 'SET_CURSOR', payload: prevMatch });
+          showMessage(`Match ${prevIndex + 1} of ${state.searchMatches.length}`, 2000);
+        } else {
+          showMessage('No previous search', 2000);
+        }
+        return true;
+    }
+    return false;
+  };
+
+  const handleUndoRedoCommands = (command) => {
+    switch (command) {
+      case 'u':
+        dispatch({ type: 'UNDO' });
+        setUndoPerformed(true);
+        showMessage('Undo', 1000);
+        return true;
+
+      case 'ctrl+r':
+        dispatch({ type: 'REDO' });
+        showMessage('Redo', 1000);
+        return true;
+    }
+    return false;
+  };
+
+  const handleYankCommands = (command) => {
+    if (['y', 'yy', 'yw'].includes(command)) {
+      const result = yankText(
+        state.textLines,
+        state.cursorPos,
+        command,
+        state.visualStart,
+        state.mode
+      );
+
+      if (result.content) {
+        dispatch({
+          type: 'SET_REGISTER',
+          payload: { content: result.content, type: result.type }
+        });
+        showMessage(result.message, 2000);
+      }
+
+      if (state.mode === 'visual' || state.mode === 'visual-line') {
+        dispatch({ type: 'EXIT_TO_NORMAL' });
+      }
+      return true;
+    }
+    return false;
+  };
+
+  const handleReplaceCommands = (command) => {
+    switch (command) {
+      case 'r':
+        setWaitingForReplaceChar(true);
+        showMessage('r_', 0);
+        return true;
+
+      case 'R':
+        dispatch({ type: 'ENTER_REPLACE_MODE' });
+        return true;
+
+      case 'cw':
+        dispatch({ type: 'SAVE_STATE_FOR_UNDO' });
+        const result = replaceText(state.textLines, state.cursorPos, 'cw');
+        dispatch({ type: 'SET_TEXT_LINES', payload: result.newLines });
+        dispatch({ type: 'ENTER_INSERT_MODE' });
+        showMessage(result.message, 1000);
+        return true;
+    }
+    return false;
+  };
+
+  const handlePasteCommands = (command) => {
+    if (['p', 'P'].includes(command)) {
+      dispatch({ type: 'SAVE_STATE_FOR_UNDO' });
+
+      const result = pasteText(
+        state.textLines,
+        state.cursorPos,
+        state.register,
+        state.registerType,
+        command
+      );
+
+      dispatch({ type: 'SET_TEXT_LINES', payload: result.newLines });
+      dispatch({ type: 'SET_CURSOR', payload: result.newCursorPos });
+      showMessage(result.message, 2000);
+      return true;
+    }
+    return false;
+  };
+
+  const handleDeleteCommands = (command) => {
+    if (['x', 'dd', 'dw', 'd$', 'd'].includes(command)) {
+      dispatch({ type: 'SAVE_STATE_FOR_UNDO' });
+
+      const result = deleteText(
+        state.textLines,
+        state.cursorPos,
+        command,
+        state.visualStart,
+        state.mode
+      );
+
+      dispatch({ type: 'SET_TEXT_LINES', payload: result.newLines });
+      dispatch({ type: 'SET_CURSOR', payload: result.newCursorPos });
+
+      if (state.mode === 'visual' || state.mode === 'visual-line') {
+        dispatch({ type: 'EXIT_TO_NORMAL' });
+      }
+
+      if (result.message) {
+        showMessage(result.message);
+      }
+      return true;
+    }
+    return false;
+  };
+
+  const handleMarkCommands = (command) => {
+    switch (command) {
+      case 'm':
+        setWaitingForMarkName(true);
+        showMessage('m_', 0);
+        return true;
+
+      case "'":
+        setWaitingForJumpMark(true);
+        showMessage("'_", 0);
+        return true;
+    }
+    return false;
+  };
+
+  const handleMovementCommands = (command) => {
+    const movementCommands = ['h', 'j', 'k', 'l', 'w', 'b', 'e', '0', '$', '^', 'gg', 'G', '{', '}'];
+    if (movementCommands.includes(command)) {
+      const newPos = moveCursor(state.cursorPos, state.textLines, command, state.mode);
+      dispatch({ type: 'SET_CURSOR', payload: newPos });
+      return true;
+    }
+    return false;
+  };
+
+  // Main command handler
+  const handleCommand = (command) => {
+    setHasUserInteracted(true);
+
+    // Check if command is allowed in this lesson
     if (!lesson.allowedCommands.includes(command)) {
-      setMistakes(m => m + 1);
-      showMessage(`Command '${command}' not allowed in this lesson!`);
+      dispatch({ type: 'INCREMENT_MISTAKES' });
+      const errorMsg = `Command '${command}' not allowed in this lesson!`;
+      showMessage(errorMsg);
+      logError(errorMsg);
       return;
     }
 
-    setCommandHistory(prev => [...prev, command]);
-    let newPos = { ...cursorPos };
-    let newMode = mode;
+    dispatch({ type: 'ADD_COMMAND_HISTORY', payload: command });
 
-    // Handle movement commands
-    switch(command) {
-      case 'h': // left
-        newPos.col = Math.max(0, cursorPos.col - 1);
-        break;
-      case 'j': // down
-        newPos.row = Math.min(textLines.length - 1, cursorPos.row + 1);
-        break;
-      case 'k': // up
-        newPos.row = Math.max(0, cursorPos.row - 1);
-        break;
-      case 'l': // right
-        newPos.col = Math.min(textLines[cursorPos.row]?.length - 1 || 0, cursorPos.col + 1);
-        break;
-      case 'w': // word forward
-        const lineW = textLines[cursorPos.row] || '';
-        const afterCursorW = lineW.slice(cursorPos.col + 1);
-        // Find next word start: skip current word, skip spaces, land on next word
-        const matchW = afterCursorW.match(/\s+\S/);
-        if (matchW) {
-          newPos.col = cursorPos.col + 1 + matchW.index + matchW[0].length - 1;
-        } else {
-          // No more words, go to end of line
-          newPos.col = Math.max(0, lineW.length - 1);
-        }
-        break;
-      case 'b': // word backward
-        const lineB = textLines[cursorPos.row] || '';
-        const beforeCursorB = lineB.slice(0, cursorPos.col);
-        // Find previous word start: go backwards
-        const matchB = beforeCursorB.match(/\S+\s*$/);
-        if (matchB) {
-          newPos.col = matchB.index;
-        } else {
-          newPos.col = 0;
-        }
-        break;
-      case 'e': // end of word
-        const lineE = textLines[cursorPos.row] || '';
-        const afterCursorE = lineE.slice(cursorPos.col + 1);
-        const matchE = afterCursorE.match(/\S+/);
-        if (matchE) {
-          newPos.col = cursorPos.col + 1 + matchE.index + matchE[0].length - 1;
-        } else {
-          newPos.col = Math.max(0, lineE.length - 1);
-        }
-        break;
-      case '0': // start of line
-        newPos.col = 0;
-        break;
-      case '$': // end of line
-        newPos.col = (textLines[cursorPos.row]?.length - 1) || 0;
-        break;
-      case '^': // first non-blank character
-        const currentLine = textLines[cursorPos.row] || '';
-        const firstNonBlank = currentLine.search(/\S/);
-        newPos.col = firstNonBlank === -1 ? 0 : firstNonBlank;
-        break;
-      case 'gg': // top of file
-        newPos.row = 0;
-        newPos.col = 0;
-        break;
-      case 'G': // bottom of file
-        newPos.row = textLines.length - 1;
-        break;
-      case 'i': // insert mode
-        newMode = 'insert';
-        showMessage('-- INSERT --');
-        break;
-      case 'a': // append
-        newPos.col = Math.min(textLines[cursorPos.row]?.length || 0, cursorPos.col + 1);
-        newMode = 'insert';
-        showMessage('-- INSERT --');
-        break;
-      case 'ESC': // escape to normal mode
-        newMode = 'normal';
-        setVisualStart(null);
-        showMessage('');
-        break;
-      case 'v': // visual mode
-        if (mode === 'visual') {
-          // Already in visual mode, exit
-          newMode = 'normal';
-          setVisualStart(null);
-          showMessage('');
-        } else {
-          // Enter visual mode
-          newMode = 'visual';
-          setVisualStart({ ...cursorPos });
-          showMessage('-- VISUAL --');
-        }
-        break;
-      case 'd': // delete in visual mode
-        if (mode === 'visual' && visualStart) {
-          const newLinesVisual = [...textLines];
-          const start = Math.min(visualStart.col, cursorPos.col);
-          const end = Math.max(visualStart.col, cursorPos.col) + 1;
-          const line = newLinesVisual[cursorPos.row];
+    // Process command through different handlers
+    if (handleModeCommands(command)) return;
+    if (handleSearchCommands(command)) return;
+    if (handleUndoRedoCommands(command)) return;
+    if (handleYankCommands(command)) return;
+    if (handleReplaceCommands(command)) return;
+    if (handlePasteCommands(command)) return;
+    if (handleDeleteCommands(command)) return;
+    if (handleMarkCommands(command)) return;
+    if (handleMovementCommands(command)) return;
+  };
 
-          if (line && visualStart.row === cursorPos.row) {
-            newLinesVisual[cursorPos.row] = line.slice(0, start) + line.slice(end);
-            setTextLines(newLinesVisual);
-            newPos.col = start;
-            newMode = 'normal';
-            setVisualStart(null);
-            showMessage('Deleted selection');
-          }
-        }
-        break;
-      case 'x': // delete character under cursor
-        const newLinesX = [...textLines];
-        const lineX = newLinesX[cursorPos.row];
-        if (lineX && cursorPos.col < lineX.length) {
-          newLinesX[cursorPos.row] = lineX.slice(0, cursorPos.col) + lineX.slice(cursorPos.col + 1);
-          setTextLines(newLinesX);
-          showMessage('Deleted character');
-        }
-        break;
-      case 'dd': // delete entire line
-        const newLinesDD = [...textLines];
-        newLinesDD.splice(cursorPos.row, 1);
-        if (newLinesDD.length === 0) {
-          newLinesDD.push('');
-        }
-        setTextLines(newLinesDD);
-        newPos.row = Math.min(cursorPos.row, newLinesDD.length - 1);
-        newPos.col = 0;
-        showMessage('Deleted line');
-        break;
-      case 'dw': // delete word
-        const newLinesDW = [...textLines];
-        const lineDW = newLinesDW[cursorPos.row];
-        if (lineDW) {
-          // Find the end of the current word (simplified)
-          const restOfLine = lineDW.slice(cursorPos.col);
-          const match = restOfLine.match(/^\S+\s*/);
-          if (match) {
-            newLinesDW[cursorPos.row] =
-              lineDW.slice(0, cursorPos.col) +
-              lineDW.slice(cursorPos.col + match[0].length);
-            setTextLines(newLinesDW);
-            showMessage('Deleted word');
-          }
-        }
-        break;
-      case 'd$': // delete to end of line
-        const newLinesD$ = [...textLines];
-        const lineD$ = newLinesD$[cursorPos.row];
-        if (lineD$) {
-          newLinesD$[cursorPos.row] = lineD$.slice(0, cursorPos.col);
-          setTextLines(newLinesD$);
-          showMessage('Deleted to end of line');
-        }
-        break;
-      default:
-        break;
-    }
-
-    setCursorPos(newPos);
-    setMode(newMode);
-
-    // Check if reached target
-    if (checkCompletion(newPos)) {
-      const timeTaken = Math.floor((Date.now() - startTime) / 1000);
-      const score = Math.max(100 - mistakes * 10, 0);
-      showMessage('🎉 Lesson Complete!', 3000);
-      setTimeout(() => {
-        onComplete({ lessonId: lesson.id, completed: true, score, timeTaken, mistakes });
-      }, 2000);
-    }
-
-  }, [cursorPos, mode, textLines, lesson, mistakes, checkCompletion, onComplete, startTime]);
-
-  // Check for delete task completion whenever textLines changes
+  // ========== COMPLETION CHECK ==========
   useEffect(() => {
-    if (lesson.task === 'delete' && lesson.targetState) {
-      const currentState = textLines.filter(line => line.trim() !== '');
-      const targetState = lesson.targetState;
+    if (!hasUserInteracted || completionTriggered) return;
 
-      if (JSON.stringify(currentState) === JSON.stringify(targetState)) {
-        const timeTaken = Math.floor((Date.now() - startTime) / 1000);
-        const score = Math.max(100 - mistakes * 10, 0);
-        showMessage('🎉 Lesson Complete!', 3000);
-        setTimeout(() => {
-          onComplete({ lessonId: lesson.id, completed: true, score, timeTaken, mistakes });
-        }, 2000);
-      }
+    const result = checkTaskCompletion(
+      lesson,
+      state.textLines,
+      state.cursorPos,
+      startTime,
+      state.mistakes,
+      undoPerformed,
+      state.marks
+    );
+
+    if (result) {
+      setCompletionTriggered(true);
+      setCompletionData(result);
+      setTriggerEffect(prev => prev + 1);
+      showMessage('🎉 Lesson Complete!');
+      onComplete(result);
     }
-  }, [textLines, lesson, startTime, mistakes, onComplete]);
+  }, [state.textLines, state.cursorPos, lesson, startTime, state.mistakes, onComplete, completionTriggered, undoPerformed, hasUserInteracted, state.marks]);
 
+  // ========== KEYBOARD EVENT HANDLING ==========
   useEffect(() => {
     const handleKeyPress = (e) => {
-      if (mode === 'insert') {
+      // Special input states
+      if (handleMarkInput(e)) return;
+      if (handleReplaceInput(e)) return;
+      if (handleReplaceMode(e)) return;
+      if (handleSearchMode(e)) return;
+      if (handleInsertMode(e)) return;
+
+      // Normal mode
+      e.preventDefault();
+      handleNormalMode(e);
+    };
+
+    const handleMarkInput = (e) => {
+      if (waitingForMarkName) {
+        if (/^[a-z]$/.test(e.key)) {
+          e.preventDefault();
+          dispatch({
+            type: 'SET_MARK',
+            payload: { mark: e.key, position: { ...state.cursorPos } }
+          });
+          showMessage(`Mark '${e.key}' set`, 1000);
+          setWaitingForMarkName(false);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          setWaitingForMarkName(false);
+          showMessage('', 0);
+        }
+        return true;
+      }
+
+      if (waitingForJumpMark) {
+        if (/^[a-z]$/.test(e.key)) {
+          e.preventDefault();
+          const mark = state.marks[e.key];
+          if (mark) {
+            dispatch({ type: 'SET_CURSOR', payload: mark });
+            showMessage(`Jumped to mark '${e.key}'`, 1000);
+          } else {
+            showMessage(`Mark '${e.key}' not set`, 2000);
+          }
+          setWaitingForJumpMark(false);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          setWaitingForJumpMark(false);
+          showMessage('', 0);
+        }
+        return true;
+      }
+      return false;
+    };
+
+    const handleReplaceInput = (e) => {
+      if (waitingForReplaceChar) {
+        if (e.key.length === 1) {
+          e.preventDefault();
+          dispatch({ type: 'SAVE_STATE_FOR_UNDO' });
+          const result = replaceText(state.textLines, state.cursorPos, 'r', e.key);
+          dispatch({ type: 'SET_TEXT_LINES', payload: result.newLines });
+          showMessage(result.message, 1000);
+          setWaitingForReplaceChar(false);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          setWaitingForReplaceChar(false);
+          showMessage('', 0);
+        }
+        return true;
+      }
+      return false;
+    };
+
+    const handleReplaceMode = (e) => {
+      if (state.mode === 'replace') {
         if (e.key === 'Escape') {
           e.preventDefault();
           handleCommand('ESC');
-          return;
+          return true;
         }
 
-        // Handle text input in insert mode
+        if (e.key === 'Backspace') {
+          e.preventDefault();
+          if (state.cursorPos.col > 0) {
+            dispatch({
+              type: 'SET_CURSOR',
+              payload: { ...state.cursorPos, col: state.cursorPos.col - 1 }
+            });
+          }
+          return true;
+        }
+
         if (e.key.length === 1) {
           e.preventDefault();
-          const newLines = [...textLines];
-          const line = newLines[cursorPos.row];
-          newLines[cursorPos.row] =
-            line.slice(0, cursorPos.col) + e.key + line.slice(cursorPos.col);
-          setTextLines(newLines);
-          setCursorPos({ ...cursorPos, col: cursorPos.col + 1 });
+          const line = state.textLines[state.cursorPos.row];
+          const newLines = [...state.textLines];
 
-          // Check if target text is achieved for insert tasks
-          if (lesson.task === 'insert' && lesson.targetText) {
-            const allText = newLines.join(' ');
-            if (allText.includes(lesson.targetText)) {
-              const timeTaken = Math.floor((Date.now() - startTime) / 1000);
-              const score = Math.max(100 - mistakes * 10, 0);
-              showMessage('🎉 Lesson Complete!', 3000);
-              setTimeout(() => {
-                onComplete({ lessonId: lesson.id, completed: true, score, timeTaken, mistakes });
-              }, 2000);
-            }
+          if (state.cursorPos.col < line.length) {
+            newLines[state.cursorPos.row] =
+              line.slice(0, state.cursorPos.col) + e.key + line.slice(state.cursorPos.col + 1);
+          } else {
+            newLines[state.cursorPos.row] = line + e.key;
           }
+
+          dispatch({ type: 'SET_TEXT_LINES', payload: newLines });
+          dispatch({
+            type: 'SET_CURSOR',
+            payload: { ...state.cursorPos, col: state.cursorPos.col + 1 }
+          });
         }
+        return true;
+      }
+      return false;
+    };
+
+    const handleSearchMode = (e) => {
+      if (state.mode === 'search') {
+        setHasUserInteracted(true);
+
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          dispatch({ type: 'EXIT_TO_NORMAL' });
+          return true;
+        }
+
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const result = findMatches(state.textLines, state.searchTerm, state.cursorPos, searchDirection);
+          dispatch({ type: 'SET_SEARCH_MATCHES', payload: { matches: result.matches, currentIndex: result.currentIndex } });
+
+          if (result.matches.length > 0) {
+            dispatch({ type: 'SET_CURSOR', payload: result.matches[result.currentIndex] });
+            dispatch({ type: 'SET_MODE', payload: 'normal' });
+            showMessage(`Match 1 of ${result.matches.length}`, 2000);
+          } else {
+            dispatch({ type: 'SET_MODE', payload: 'normal' });
+            showMessage('Pattern not found', 2000);
+          }
+          return true;
+        }
+
+        if (e.key === 'Backspace') {
+          e.preventDefault();
+          const newTerm = state.searchTerm.slice(0, -1);
+          dispatch({ type: 'SET_SEARCH_TERM', payload: newTerm });
+          dispatch({ type: 'SET_MESSAGE', payload: (searchDirection === 'forward' ? '/' : '?') + newTerm });
+          return true;
+        }
+
+        if (e.key.length === 1) {
+          e.preventDefault();
+          const newTerm = state.searchTerm + e.key;
+          dispatch({ type: 'SET_SEARCH_TERM', payload: newTerm });
+          dispatch({ type: 'SET_MESSAGE', payload: (searchDirection === 'forward' ? '/' : '?') + newTerm });
+        }
+        return true;
+      }
+      return false;
+    };
+
+    const handleInsertMode = (e) => {
+      if (state.mode === 'insert') {
+        setHasUserInteracted(true);
+
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          handleCommand('ESC');
+          return true;
+        }
+
+        if (e.key === 'Backspace') {
+          e.preventDefault();
+          if (state.cursorPos.col > 0) {
+            const newLines = [...state.textLines];
+            const line = newLines[state.cursorPos.row];
+            newLines[state.cursorPos.row] = line.slice(0, state.cursorPos.col - 1) + line.slice(state.cursorPos.col);
+            dispatch({ type: 'SET_TEXT_LINES', payload: newLines });
+            dispatch({
+              type: 'SET_CURSOR',
+              payload: { ...state.cursorPos, col: state.cursorPos.col - 1 }
+            });
+          }
+          return true;
+        }
+
+        if (e.key.length === 1) {
+          e.preventDefault();
+          const newLines = insertText(state.textLines, state.cursorPos, e.key);
+          dispatch({ type: 'SET_TEXT_LINES', payload: newLines });
+          dispatch({
+            type: 'SET_CURSOR',
+            payload: { ...state.cursorPos, col: state.cursorPos.col + 1 }
+          });
+        }
+        return true;
+      }
+      return false;
+    };
+
+    const handleNormalMode = (e) => {
+      // Ctrl+r for redo
+      if (e.ctrlKey && e.key === 'r') {
+        handleCommand('ctrl+r');
         return;
       }
 
-      e.preventDefault();
+      // Multi-character commands
+      if (handleMultiCharCommands(e)) return;
 
-      // Handle multi-character commands (dd, dw, d$, gg, etc.)
-      const currentKey = e.key;
-
-      if (pendingCommand === 'd') {
-        if (currentKey === 'd') {
-          handleCommand('dd');
-          setPendingCommand('');
-          return;
-        } else if (currentKey === 'w') {
-          handleCommand('dw');
-          setPendingCommand('');
-          return;
-        } else if (currentKey === '$') {
-          handleCommand('d$');
-          setPendingCommand('');
-          return;
-        } else {
-          setPendingCommand('');
-        }
-      }
-
-      if (pendingCommand === 'g') {
-        if (currentKey === 'g') {
-          handleCommand('gg');
-          setPendingCommand('');
-          return;
-        } else {
-          setPendingCommand('');
-        }
-      }
-
-      // Check if starting a multi-character command
-      if (currentKey === 'd') {
-        setPendingCommand('d');
-        showMessage('d', 1000);
-        return;
-      }
-
-      if (currentKey === 'g') {
-        setPendingCommand('g');
-        showMessage('g', 1000);
-        return;
-      }
-
-      // Map key presses to commands
+      // Single-key command mapping
       const keyMap = {
         'h': 'h', 'j': 'j', 'k': 'k', 'l': 'l',
         'w': 'w', 'b': 'b', 'e': 'e',
         '0': '0', '$': '$', '^': '^',
-        'i': 'i', 'a': 'a', 'o': 'o',
+        'i': 'i', 'a': 'a', 'o': 'o', 'O': 'O',
+        'A': 'A', 'I': 'I',
         'Escape': 'ESC',
         'v': 'v', 'V': 'V',
         'G': 'G',
@@ -326,69 +597,159 @@ function VimSimulator({ lesson, onComplete }) {
         '/': '/',
         'n': 'n', 'N': 'N',
         'm': 'm',
-        "'": "'"
+        "'": "'",
+        '{': '{', '}': '}',
+        'c': 'c'
       };
 
-      if (currentKey in keyMap) {
-        handleCommand(keyMap[currentKey]);
+      if (e.key in keyMap) {
+        handleCommand(keyMap[e.key]);
       }
+    };
+
+    const handleMultiCharCommands = (e) => {
+      // Handle 'd' commands
+      if (state.pendingCommand === 'd') {
+        if (e.key === 'd') {
+          handleCommand('dd');
+        } else if (e.key === 'w') {
+          handleCommand('dw');
+        } else if (e.key === '$') {
+          handleCommand('d$');
+        }
+        dispatch({ type: 'SET_PENDING_COMMAND', payload: '' });
+        return true;
+      }
+
+      // Handle 'g' commands
+      if (state.pendingCommand === 'g') {
+        if (e.key === 'g') {
+          handleCommand('gg');
+        }
+        dispatch({ type: 'SET_PENDING_COMMAND', payload: '' });
+        return true;
+      }
+
+      // Handle 'y' commands
+      if (state.pendingCommand === 'y') {
+        if (e.key === 'y') {
+          handleCommand('yy');
+        } else if (e.key === 'w') {
+          handleCommand('yw');
+        }
+        dispatch({ type: 'SET_PENDING_COMMAND', payload: '' });
+        return true;
+      }
+
+      // Handle 'c' commands
+      if (state.pendingCommand === 'c') {
+        if (e.key === 'w') {
+          handleCommand('cw');
+        }
+        dispatch({ type: 'SET_PENDING_COMMAND', payload: '' });
+        return true;
+      }
+
+      // Start multi-character commands
+      if (e.key === 'd') {
+        if (state.mode === 'visual' || state.mode === 'visual-line') {
+          handleCommand('d');
+        } else {
+          dispatch({ type: 'SET_PENDING_COMMAND', payload: 'd' });
+          showMessage('d', 1000);
+        }
+        return true;
+      }
+
+      if (e.key === 'y') {
+        if (state.mode === 'visual' || state.mode === 'visual-line') {
+          handleCommand('y');
+        } else {
+          dispatch({ type: 'SET_PENDING_COMMAND', payload: 'y' });
+          showMessage('y', 1000);
+        }
+        return true;
+      }
+
+      if (e.key === 'c') {
+        dispatch({ type: 'SET_PENDING_COMMAND', payload: 'c' });
+        showMessage('c', 1000);
+        return true;
+      }
+
+      if (e.key === 'g') {
+        dispatch({ type: 'SET_PENDING_COMMAND', payload: 'g' });
+        showMessage('g', 1000);
+        return true;
+      }
+
+      return false;
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [handleCommand, mode, cursorPos, textLines, lesson, mistakes, onComplete, startTime, pendingCommand]);
+  }, [state, handleCommand, waitingForMarkName, waitingForJumpMark, waitingForReplaceChar, searchDirection]);
 
+  // ========== RENDER ==========
   return (
     <div className="vim-simulator">
-      <div className="vim-header">
-        <div className="vim-mode">Mode: {mode.toUpperCase()}</div>
-        <div className="vim-stats">
-          <span className="lesson-indicator">Lesson {lesson.id}</span>
-          <span>Mistakes: {mistakes}</span>
-          <span>Position: {cursorPos.row}:{cursorPos.col}</span>
+      <button className="back-to-lessons-btn" onClick={onBackToLessons}>
+        ← Back to Lessons
+      </button>
+
+      <VimHeader
+        mode={state.mode}
+        mistakes={state.mistakes}
+        cursorPos={state.cursorPos}
+        lessonNumber={lesson.id}
+      />
+
+      {!completionTriggered && (
+        <div className="vim-objective-top">
+          <span className="objective-label">🎯 Objective:</span>
+          <span className="objective-text">{lesson.instructions}</span>
         </div>
-      </div>
+      )}
 
-      <div className="vim-editor">
-        {textLines.map((line, rowIdx) => (
-          <div key={rowIdx} className="vim-line">
-            <span className="line-number">{rowIdx + 1}</span>
-            <span className="line-content">
-              {line.split('').map((char, colIdx) => {
-                const isCursor = cursorPos.row === rowIdx && cursorPos.col === colIdx;
-                const isTarget = lesson.targetPosition &&
-                  lesson.targetPosition.row === rowIdx &&
-                  lesson.targetPosition.col === colIdx;
+      <VimEditor
+        textLines={state.textLines}
+        cursorPos={state.cursorPos}
+        mode={state.mode}
+        visualStart={state.visualStart}
+        lesson={lesson}
+        editorStyle={editorStyle}
+      />
 
-                // Check if in visual selection
-                const isSelected = mode === 'visual' && visualStart &&
-                  visualStart.row === rowIdx && cursorPos.row === rowIdx &&
-                  colIdx >= Math.min(visualStart.col, cursorPos.col) &&
-                  colIdx <= Math.max(visualStart.col, cursorPos.col);
+      <VimFooter
+        message={state.message}
+        hints={lesson.hints}
+        isCompleted={completionTriggered}
+        completionData={completionData}
+        onNextLesson={onNextLesson}
+        onBackToLessons={onBackToLessons}
+      />
 
-                return (
-                  <span
-                    key={colIdx}
-                    className={`char ${isCursor ? 'cursor' : ''} ${isTarget ? 'target' : ''} ${isSelected ? 'selected' : ''}`}
-                  >
-                    {char === ' ' ? '\u00A0' : char}
-                  </span>
-                );
-              })}
-            </span>
-          </div>
-        ))}
-      </div>
+      <DebugPanel
+        state={{
+          mode: state.mode,
+          cursorPos: state.cursorPos,
+          mistakes: state.mistakes,
+          textLines: state.textLines,
+          visualStart: state.visualStart,
+          pendingCommand: state.pendingCommand,
+          searchTerm: state.searchTerm,
+          searchMatches: state.searchMatches,
+          currentMatchIndex: state.currentMatchIndex,
+          undoStack: state.undoStack,
+          redoStack: state.redoStack,
+          register: state.register,
+          registerType: state.registerType
+        }}
+        commandHistory={state.commandHistory}
+        errors={errors}
+      />
 
-      <div className="vim-footer">
-        <div className="vim-message">{message || '\u00A0'}</div>
-        <div className="vim-hints">
-          <div className="hint-title">💡 Hints:</div>
-          {lesson.hints.map((hint, idx) => (
-            <div key={idx} className="hint">• {hint}</div>
-          ))}
-        </div>
-      </div>
+      <CompletionEffects effect={completionEffect} trigger={triggerEffect} />
     </div>
   );
 }
